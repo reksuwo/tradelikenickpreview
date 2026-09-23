@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fixed brand colours — used where a colour must NOT follow the section theme
+     (poster artwork, device mock chrome, the sticky header, the logo). */
+  --color-neon: #00ff85;
+  --color-neon-bright: #62ffb0;
+  --color-neon-deep: #00d770;
+  --color-neon-ink: #067a45;
+
+  --color-ink: #081110;
+  --color-ink-700: #2b3634;
+  --color-ink-500: #5a6764;
+  --color-ink-300: #93a09c;
+  --color-line: #e6eae8;
+  --color-mist: #f5f8f6;
+
+  /* Poster artwork surfaces: a touch lifted off pure black so cover art still
+     separates from a black section behind it. */
+  --color-art-dark: #101a18;
+
+  --shadow-card: 0 1px 2px rgba(8, 17, 16, 0.04), 0 18px 40px -24px rgba(8, 17, 16, 0.16);
+  --shadow-float: 0 34px 80px -34px rgba(8, 17, 16, 0.38);
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
+}
+
+/*
+  Section themes.
+
+  Every section on the page carries either .theme-light or .theme-dark, and the
+  page alternates between them. The variables below are the only thing that
+  changes: components are written against the semantic tokens, never against a
+  literal colour, so flipping a section is a one-class change in page.tsx.
+
+  light = white background, neon green highlights
+  dark  = black background, white highlights
+*/
+@layer base {
+  :root,
+  .theme-light {
+    --s-bg: #ffffff;
+    --s-fg: #081110;
+    --s-muted: #5a6764;
+    --s-faint: #93a09c;
+    --s-line: #e6eae8;
+    --s-card: #ffffff;
+    --s-sunken: #f5f8f6;
+    --s-accent: #00ff85;
+    --s-accent-soft: rgba(0, 255, 133, 0.22);
+    --s-accent-ink: #067a45;
+    --s-on-accent: #081110;
+    --s-chip: #081110;
+    --s-on-chip: #00ff85;
+    --s-art: #00ff85;
+    --s-glow: 0 12px 30px -12px rgba(0, 255, 133, 0.7);
+  }
+
+  .theme-dark {
+    --s-bg: #000000;
+    --s-fg: #ffffff;
+    --s-muted: rgba(255, 255, 255, 0.64);
+    --s-faint: rgba(255, 255, 255, 0.46);
+    --s-line: rgba(255, 255, 255, 0.15);
+    --s-card: rgba(255, 255, 255, 0.05);
+    --s-sunken: rgba(255, 255, 255, 0.08);
+    --s-accent: #ffffff;
+    --s-accent-soft: rgba(255, 255, 255, 0.16);
+    --s-accent-ink: #ffffff;
+    --s-on-accent: #081110;
+    --s-chip: #ffffff;
+    --s-on-chip: #081110;
+    --s-art: #ffffff;
+    --s-glow: 0 12px 34px -12px rgba(255, 255, 255, 0.4);
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-jakarta);
+
+  --color-surface: var(--s-bg);
+  --color-fg: var(--s-fg);
+  --color-muted: var(--s-muted);
+  --color-faint: var(--s-faint);
+  --color-edge: var(--s-line);
+  --color-card: var(--s-card);
+  --color-sunken: var(--s-sunken);
+  --color-accent: var(--s-accent);
+  --color-accent-soft: var(--s-accent-soft);
+  --color-accent-ink: var(--s-accent-ink);
+  --color-on-accent: var(--s-on-accent);
+  --color-chip: var(--s-chip);
+  --color-on-chip: var(--s-on-chip);
+  --color-art: var(--s-art);
+
+  --shadow-glow: var(--s-glow);
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: var(--s-fg);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.032em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background-color: var(--color-neon);
+    color: var(--color-ink);
+  }
+}
+
+@utility dotgrid {
+  background-image: radial-gradient(color-mix(in oklab, var(--s-fg) 9%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@utility fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+@utility tabnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
