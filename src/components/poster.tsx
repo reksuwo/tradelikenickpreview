@@ -19,7 +19,16 @@ const LIGHT_SURFACE = new Set([1, 2, 4, 6]);
  * Nine deterministic cover artworks. Abstract and typographic on purpose —
  * these read as course posters on a shelf, not as screenshots of software.
  */
-export function Poster({ variant, label }: { variant: number; label: string }) {
+export function Poster({
+  variant,
+  label,
+  labelInset = false,
+}: {
+  variant: number;
+  label: string;
+  /** Shift the label right to leave room for an overlay in the bottom-left corner. */
+  labelInset?: boolean;
+}) {
   const v = variant % 9;
   const onLight = LIGHT_SURFACE.has(v);
 
@@ -203,7 +212,7 @@ export function Poster({ variant, label }: { variant: number; label: string }) {
       </svg>
 
       <span
-        className={`absolute bottom-3 left-4 max-w-[70%] font-display text-[13px] font-extrabold uppercase leading-tight tracking-[0.08em] ${
+        className={`absolute ${labelInset ? "bottom-[19px] left-12" : "bottom-3 left-4"} max-w-[70%] font-display text-[13px] font-extrabold uppercase leading-tight tracking-[0.08em] ${
           onLight ? "text-ink/70" : "text-white/75"
         }`}
       >

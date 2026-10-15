@@ -1,18 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Container, Eyebrow, PlayIcon, Section, Star, type Tone } from "./ui";
+import { useState } from "react";
+import { Arrow, Container, CTA, PlayIcon, Section, Star, type Tone } from "./ui";
 import { Poster } from "./poster";
 import { CATEGORIES, COURSES, ROWS, byId, type Course } from "@/lib/courses";
 
-const TRACK_PADDING = "px-5 sm:px-8 lg:px-[max(2rem,calc((100vw_-_1180px)_/_2))]";
-
 function CourseCard({ course }: { course: Course }) {
   return (
-    <article data-card className="group w-[248px] shrink-0 snap-start sm:w-[284px]">
+    <article className="group">
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-edge transition-all duration-200 group-hover:border-accent group-hover:shadow-card">
-        <Poster variant={course.poster} label={course.category} />
+        <Poster variant={course.poster} label={course.category} labelInset />
+
+        <span
+          title="Purchase to unlock"
+          className="absolute bottom-3 left-3 grid size-8 place-items-center rounded-full bg-black/80 text-white backdrop-blur"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden className="size-4">
+            <rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" />
+            <path
+              d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="sr-only">Locked — purchase to unlock</span>
+        </span>
 
         {course.badge ? (
           <span className="absolute left-3 top-3 rounded-md bg-accent px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-on-accent">
@@ -55,114 +70,19 @@ function CourseCard({ course }: { course: Course }) {
   );
 }
 
-function Row({
-  title,
-  subtitle,
-  courses,
-}: {
-  title: string;
-  subtitle: string;
-  courses: Course[];
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [atStart, setAtStart] = useState(true);
-  const [atEnd, setAtEnd] = useState(false);
-
-  const sync = useCallback(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    setAtStart(el.scrollLeft <= 4);
-    setAtEnd(max <= 4 || el.scrollLeft >= max - 4);
-  }, []);
-
-  useEffect(() => {
-    sync();
-    window.addEventListener("resize", sync);
-    return () => window.removeEventListener("resize", sync);
-  }, [sync, courses.length]);
-
-  const step = useCallback((dir: 1 | -1) => {
-    const el = trackRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>("[data-card]");
-    const amount = card ? (card.offsetWidth + 16) * 2 : el.clientWidth * 0.8;
-    el.scrollBy({ left: dir * amount, behavior: "smooth" });
-  }, []);
-
-  return (
-    <div>
-      <Container className="flex items-end justify-between gap-6">
-        <div>
-          <h3 className="text-[19px] font-extrabold text-fg sm:text-[22px]">{title}</h3>
-          <p className="mt-1 text-[13.5px] text-muted">{subtitle}</p>
-        </div>
-        <div className="hidden shrink-0 items-center gap-2 sm:flex">
-          <button
-            type="button"
-            onClick={() => step(-1)}
-            disabled={atStart}
-            aria-label={`Scroll ${title} left`}
-            className="grid size-10 place-items-center rounded-full border border-edge bg-card text-fg transition-all duration-200 hover:border-fg/40 disabled:pointer-events-none disabled:opacity-30"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="size-4">
-              <path
-                d="M14.5 5.5L8 12l6.5 6.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => step(1)}
-            disabled={atEnd}
-            aria-label={`Scroll ${title} right`}
-            className="grid size-10 place-items-center rounded-full bg-chip text-on-chip transition-all duration-200 hover:opacity-85 disabled:pointer-events-none disabled:opacity-30"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="size-4">
-              <path
-                d="M9.5 5.5L16 12l-6.5 6.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </Container>
-
-      <div
-        ref={trackRef}
-        onScroll={sync}
-        tabIndex={0}
-        role="region"
-        aria-label={title}
-        className={`no-scrollbar mt-5 flex snap-x gap-4 overflow-x-auto pb-2 focus-visible:outline-none ${TRACK_PADDING}`}
-      >
-        {courses.map((c) => (
-          <CourseCard key={`${title}-${c.id}`} course={c} />
-        ))}
-      </div>
-    </div>
-  );
-}
+const HOME_LIMIT = 4;
 
 export function Library({ tone }: { tone: Tone }) {
   const [active, setActive] = useState("All");
-  const filtered = COURSES.filter((c) => c.category === active);
+  const courses = (
+    active === "All" ? ROWS[0].ids.map(byId) : COURSES.filter((c) => c.category === active)
+  ).slice(0, HOME_LIMIT);
 
   return (
-    <Section id="library" tone={tone} className="overflow-hidden py-20 lg:py-28">
+    <Section id="library" tone={tone} className="py-20 lg:py-28">
       <Container>
         <div className="max-w-2xl">
-          <Eyebrow>The library</Eyebrow>
-          <h2 className="mt-5 text-[clamp(2rem,4.2vw,3.1rem)] font-extrabold leading-[1.04] text-fg">
+          <h2 className="text-[clamp(2rem,4.2vw,3.1rem)] font-extrabold leading-[1.04] text-fg">
             Nine courses. One shelf. Watch in any order.
           </h2>
           <p className="mt-5 text-[16.5px] leading-relaxed text-muted">
@@ -188,26 +108,28 @@ export function Library({ tone }: { tone: Tone }) {
             </button>
           ))}
         </div>
-      </Container>
 
-      <div className="mt-12 space-y-14">
-        {active === "All" ? (
-          ROWS.map((row) => (
-            <Row
-              key={row.title}
-              title={row.title}
-              subtitle={row.subtitle}
-              courses={row.ids.map(byId)}
-            />
-          ))
-        ) : (
-          <Row
-            title={active}
-            subtitle={`${filtered.length} ${filtered.length === 1 ? "course" : "courses"} in this category`}
-            courses={filtered}
-          />
-        )}
-      </div>
+        <div className="mt-12">
+          <h3 className="text-[19px] font-extrabold text-fg sm:text-[22px]">
+            {active === "All" ? ROWS[0].title : active}
+          </h3>
+          <p className="mt-1 text-[13.5px] text-muted">
+            {active === "All" ? ROWS[0].subtitle : "A few picks from this category"}
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          {courses.map((c) => (
+            <CourseCard key={c.id} course={c} />
+          ))}
+        </div>
+
+        <div className="mt-12 flex justify-center">
+          <CTA href="/courses" size="lg">
+            View all courses <Arrow />
+          </CTA>
+        </div>
+      </Container>
     </Section>
   );
 }

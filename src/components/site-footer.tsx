@@ -6,10 +6,11 @@ const COLUMNS = [
   {
     title: "Watch",
     links: [
-      { label: "The library", href: "#library" },
-      { label: "How it works", href: "#how" },
-      { label: "Episode guide", href: "#episodes" },
-      { label: "Live sessions", href: "#platform" },
+      { label: "The library", href: "/#library" },
+      { label: "How it works", href: "/#how" },
+      { label: "Courses", href: "/courses" },
+      { label: "Trading Books", href: "/books" },
+      { label: "Live sessions", href: "/#library" },
     ],
   },
   {
@@ -17,26 +18,26 @@ const COLUMNS = [
     links: [
       { label: "Sign in", href: "/signin" },
       { label: "Create an account", href: "/signin" },
-      { label: "Offline downloads", href: "#platform" },
-      { label: "Help centre", href: "#faq" },
+      { label: "Offline downloads", href: "/#faq" },
+      { label: "Help centre", href: "/#faq" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About Nick", href: "#instructor" },
-      { label: "Member stories", href: "#results" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Contact", href: "#faq" },
+      { label: "About Nick", href: "/#instructor" },
+      { label: "Testimonials", href: "/testimonials" },
+      { label: "FAQ", href: "/#faq" },
+      { label: "Contact", href: "/#faq" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Terms of service", href: "#faq" },
-      { label: "Privacy policy", href: "#faq" },
-      { label: "Refund policy", href: "#access" },
-      { label: "Risk disclosure", href: "#faq" },
+      { label: "Terms of service", href: "/#faq" },
+      { label: "Privacy policy", href: "/#faq" },
+      { label: "Refund policy", href: "/#access" },
+      { label: "Risk disclosure", href: "/#faq" },
     ],
   },
 ];

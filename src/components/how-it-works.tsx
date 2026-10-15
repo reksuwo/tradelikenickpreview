@@ -147,8 +147,7 @@ export function HowItWorks({ tone }: { tone: Tone }) {
   return (
     <Section id="how" tone={tone} className="py-20 lg:py-28">
       <Container>
-        <SectionHeading
-          eyebrow="How it works"
+        <SectionHeading
           title="Press play, do the reps, ask the questions"
           blurb="It is a streaming library with homework. The watching is the easy part — the drills and the weekly session are what make it stick."
         />

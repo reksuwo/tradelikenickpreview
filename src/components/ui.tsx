@@ -43,15 +43,6 @@ export function Section({
   );
 }
 
-export function Eyebrow({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-edge bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-      <span className="size-1.5 rounded-full bg-accent-ink" />
-      {children}
-    </span>
-  );
-}
-
 export function CTA({
   href,
   children,
@@ -94,12 +85,10 @@ export function Arrow() {
 }
 
 export function SectionHeading({
-  eyebrow,
   title,
   blurb,
   align = "center",
 }: {
-  eyebrow?: string;
   title: ReactNode;
   blurb?: ReactNode;
   align?: "center" | "left";
@@ -111,7 +100,6 @@ export function SectionHeading({
         isCenter ? "items-center text-center" : "items-start text-left"
       }`}
     >
-      {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
       <h2 className="max-w-3xl text-[clamp(2rem,4.4vw,3.35rem)] font-extrabold leading-[1.04] text-fg">
         {title}
       </h2>

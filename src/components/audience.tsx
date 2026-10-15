@@ -27,8 +27,7 @@ export function Audience({ tone }: { tone: Tone }) {
   return (
     <Section tone={tone} className="py-20 lg:py-28">
       <Container>
-        <SectionHeading
-          eyebrow="Who it is for"
+        <SectionHeading
           title="Four traders walk in. Same process, different starting point."
         />
 

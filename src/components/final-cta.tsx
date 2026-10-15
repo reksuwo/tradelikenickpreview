@@ -26,7 +26,7 @@ export function FinalCta({ tone }: { tone: Tone }) {
             <CTA href="/signin" size="lg">
               Sign in and start watching <Arrow />
             </CTA>
-            <CTA href="#library" variant="outline" size="lg">
+            <CTA href="/#library" variant="outline" size="lg">
               Browse the library
             </CTA>
           </div>

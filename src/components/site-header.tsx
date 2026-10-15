@@ -6,10 +6,11 @@ import { Container, CTA } from "./ui";
 import { Logo } from "./logo";
 
 const NAV = [
-  { label: "Library", href: "#library" },
-  { label: "How it works", href: "#how" },
-  { label: "Episodes", href: "#episodes" },
-  { label: "Reviews", href: "#results" },
+  { label: "Library", href: "/#library" },
+  { label: "How it works", href: "/#how" },
+  { label: "Courses", href: "/courses" },
+  { label: "Testimonials", href: "/testimonials" },
+  { label: "Trading Books", href: "/books" },
 ];
 
 export function SiteHeader() {
@@ -45,7 +46,7 @@ export function SiteHeader() {
 
           <div className="hidden items-center gap-2 sm:flex">
             <Link
-              href="#faq"
+              href="/#faq"
               className="rounded-full px-4 py-2 text-[14.5px] font-semibold text-ink-700 transition-colors hover:text-ink"
             >
               Questions?

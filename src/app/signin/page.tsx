@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { Poster } from "@/components/poster";
 import { COURSES } from "@/lib/courses";
@@ -10,6 +11,12 @@ export const metadata: Metadata = {
 };
 
 const COLLAGE = COURSES.slice(0, 6);
+
+// No real auth yet: any submit lands on the member home.
+async function signIn() {
+  "use server";
+  redirect("/browse");
+}
 
 function Field({
   label,
@@ -152,7 +159,7 @@ export default function SignInPage() {
             <span className="h-px flex-1 bg-edge" />
           </div>
 
-          <form className="space-y-5">
+          <form action={signIn} className="space-y-5">
             <Field
               label="Email"
               name="email"

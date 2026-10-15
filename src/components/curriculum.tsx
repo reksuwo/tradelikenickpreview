@@ -1,4 +1,5 @@
-import { Arrow, Container, CTA, Eyebrow, PlayIcon, Section, type Tone } from "./ui";
+import { Arrow, Container, CTA, PlayIcon, Section, type Tone } from "./ui";
+import { ChartBackdrop } from "./chart-backdrop";
 
 const EPISODES = [
   {
@@ -65,14 +66,23 @@ const EPISODES = [
   },
 ];
 
-export function Curriculum({ tone }: { tone: Tone }) {
+export function Curriculum({
+  tone,
+  limit,
+}: {
+  tone: Tone;
+  /** Show only the first N episodes, plus a link to /courses. */
+  limit?: number;
+}) {
+  const episodes = limit ? EPISODES.slice(0, limit) : EPISODES;
+
   return (
-    <Section id="episodes" tone={tone} className="py-20 lg:py-28">
-      <Container>
+    <Section id="courses" tone={tone} className="relative overflow-hidden py-20 lg:py-28">
+      <ChartBackdrop />
+      <Container className="relative">
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
           <div className="lg:sticky lg:top-32 lg:self-start">
-            <Eyebrow>Episode guide</Eyebrow>
-            <h2 className="mt-5 text-[clamp(2rem,4.2vw,3rem)] font-extrabold leading-[1.04] text-fg">
+            <h2 className="text-[clamp(2rem,4.2vw,3rem)] font-extrabold leading-[1.04] text-fg">
               Inside the flagship series
             </h2>
             <p className="mt-5 text-[16.5px] leading-relaxed text-muted">
@@ -88,7 +98,7 @@ export function Curriculum({ tone }: { tone: Tone }) {
                 { k: "Runtime", v: "62 hrs" },
                 { k: "Drills", v: "32" },
               ].map((s) => (
-                <div key={s.k} className="rounded-2xl border border-edge bg-card px-4 py-3.5">
+                <div key={s.k} className="rounded-2xl border border-edge bg-card px-4 py-3.5 backdrop-blur-xl">
                   <p className="font-display text-[22px] font-extrabold tabnum text-fg">{s.v}</p>
                   <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-faint">
                     {s.k}
@@ -102,8 +112,8 @@ export function Curriculum({ tone }: { tone: Tone }) {
             </CTA>
           </div>
 
-          <div className="divide-y divide-edge overflow-hidden rounded-[24px] border border-edge bg-card">
-            {EPISODES.map((e) => (
+          <div className="divide-y divide-edge overflow-hidden rounded-[24px] border border-edge bg-card backdrop-blur-xl">
+            {episodes.map((e) => (
               <article
                 key={e.n}
                 className="group flex items-start gap-4 p-4 transition-colors hover:bg-sunken sm:gap-5 sm:p-5"
@@ -145,6 +155,17 @@ export function Curriculum({ tone }: { tone: Tone }) {
                 </div>
               </article>
             ))}
+
+            {limit && EPISODES.length > limit ? (
+              <div className="flex flex-col items-start justify-between gap-4 bg-sunken p-5 sm:flex-row sm:items-center">
+                <p className="text-[14px] font-semibold text-muted">
+                  +{EPISODES.length - limit} more episodes in this course
+                </p>
+                <CTA href="/courses">
+                  View all courses <Arrow />
+                </CTA>
+              </div>
+            ) : null}
           </div>
         </div>
       </Container>

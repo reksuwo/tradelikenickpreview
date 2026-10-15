@@ -33,8 +33,7 @@ export function Access({ tone }: { tone: Tone }) {
   return (
     <Section id="access" tone={tone} className="py-20 lg:py-28">
       <Container>
-        <SectionHeading
-          eyebrow="Getting started"
+        <SectionHeading
           title="Sign in first. Buy what you want after."
           blurb="There is no paywall on the front door. Make an account, look around the library, and only buy the courses you actually want to watch."
         />

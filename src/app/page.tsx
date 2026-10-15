@@ -2,9 +2,9 @@ import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/components/hero";
 import { Marquee } from "@/components/marquee";
 import { Stats } from "@/components/stats";
+import { Roadmap } from "@/components/roadmap";
 import { Library } from "@/components/library";
 import { HowItWorks } from "@/components/how-it-works";
-import { Platform } from "@/components/platform";
 import { Curriculum } from "@/components/curriculum";
 import { Audience } from "@/components/audience";
 import { Instructor } from "@/components/instructor";
@@ -31,10 +31,10 @@ export default function Page() {
         <Hero tone="light" />
         <Marquee tone="dark" />
         <Stats tone="light" />
+        <Roadmap tone="light" />
         <Library tone="dark" />
         <HowItWorks tone="light" />
-        <Platform tone="dark" />
-        <Curriculum tone="light" />
+        <Curriculum tone="dark" limit={4} />
         <Audience tone="dark" />
         <Instructor tone="light" />
         <Testimonials tone="dark" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Container, Eyebrow, Section, type Tone } from "./ui";
+import { Container, Section, type Tone } from "./ui";
 
 const FAQS = [
   {
@@ -50,8 +50,7 @@ export function Faq({ tone }: { tone: Tone }) {
       <Container>
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
           <div className="lg:sticky lg:top-32 lg:self-start">
-            <Eyebrow>FAQ</Eyebrow>
-            <h2 className="mt-5 text-[clamp(2rem,4.2vw,2.9rem)] font-extrabold leading-[1.05] text-fg">
+            <h2 className="text-[clamp(2rem,4.2vw,2.9rem)] font-extrabold leading-[1.05] text-fg">
               Questions people ask before signing up
             </h2>
             <p className="mt-5 text-[16.5px] leading-relaxed text-muted">
