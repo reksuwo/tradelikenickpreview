@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-export function Logo() {
+/** `href` is the member home on signed-in pages, the marketing home elsewhere. */
+export function Logo({ href = "/" }: { href?: string }) {
   return (
-    <Link href="/" className="group flex items-center gap-2.5">
+    <Link href={href} className="group flex items-center gap-2.5">
       <span className="relative grid size-9 place-items-center rounded-xl bg-chip bg-linear-[145deg,rgba(0,255,133,0.14),transparent_65%] text-on-chip ring-1 ring-inset ring-neon/20 transition-transform duration-200 group-hover:-rotate-6">
         {/* Candlesticks: up, a red candle down, then up higher. */}
         <svg viewBox="0 0 24 24" aria-hidden className="size-6">

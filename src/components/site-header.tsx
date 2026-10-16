@@ -51,7 +51,13 @@ export function SiteHeader() {
             >
               Questions?
             </Link>
-            <CTA href="/signin">Sign in</CTA>
+            <Link
+              href="/signin"
+              className="rounded-full px-4 py-2 text-[14.5px] font-semibold text-ink-700 transition-colors hover:text-ink"
+            >
+              Sign in
+            </Link>
+            <CTA href="/signup">Sign up free</CTA>
           </div>
 
           <button
@@ -96,7 +102,10 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-              <CTA href="/signin" size="lg" className="mt-2 w-full">
+              <CTA href="/signup" size="lg" className="mt-2 w-full">
+                Sign up free
+              </CTA>
+              <CTA href="/signin" variant="outline" size="lg" className="w-full">
                 Sign in
               </CTA>
             </Container>

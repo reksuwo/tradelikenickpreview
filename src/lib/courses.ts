@@ -169,3 +169,24 @@ export function byId(id: string): Course {
   if (!found) throw new Error(`Unknown course: ${id}`);
   return found;
 }
+
+/** "Top Courses This Week", most watched first. */
+export const POPULAR_IDS = [
+  "position-sizing",
+  "complete-system",
+  "live-archive",
+  "price-no-indicators",
+  "first-90",
+  "rules-over-feelings",
+  "backtesting",
+  "prop-firm",
+  "journal-bootcamp",
+];
+
+/** Sample progress shown to every member until real enrolments are stored. */
+export const IN_PROGRESS: { course: Course; progress: number; note: string }[] = [
+  { course: byId("complete-system"), progress: 0.34, note: "Lesson 51 of 148" },
+  { course: byId("position-sizing"), progress: 0.72, note: "Lesson 19 of 26" },
+  { course: byId("first-90"), progress: 0.15, note: "Lesson 4 of 22" },
+  { course: byId("live-archive"), progress: 0.5, note: "Session 12" },
+];

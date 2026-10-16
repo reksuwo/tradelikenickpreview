@@ -1,31 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BrowseHeader } from "./browse-header";
-import { BrowseHero } from "./browse-hero";
-import { CourseRow, type RowItem } from "./course-row";
+import { useEffect, useRef } from "react";
 import { Poster } from "../poster";
 import { PlayIcon, Star } from "../ui";
-import { CATEGORIES, COURSES, ROWS, byId, type Course } from "@/lib/courses";
+import type { Course } from "@/lib/courses";
 
-// Demo member data until real accounts exist.
-const MEMBER = "Nick";
-const FEATURED = byId("complete-system");
-
-const CONTINUE: RowItem[] = [
-  { course: byId("complete-system"), progress: 0.34, note: "Lesson 51 of 148" },
-  { course: byId("position-sizing"), progress: 0.72, note: "Lesson 19 of 26" },
-  { course: byId("first-90"), progress: 0.15, note: "Lesson 4 of 22" },
-  { course: byId("live-archive"), progress: 0.5, note: "Session 12" },
-];
-
-const POPULAR = ["position-sizing", "complete-system", "live-archive", "price-no-indicators", "first-90", "rules-over-feelings", "backtesting", "prop-firm", "journal-bootcamp"].map(
-  (id) => ({ course: byId(id) }),
-);
-
-const toItems = (ids: string[]): RowItem[] => ids.map((id) => ({ course: byId(id) }));
-
-function CourseModal({ course, onClose }: { course: Course | null; onClose: () => void }) {
+/** Course details dialog, opened from any card on the member pages. */
+export function CourseModal({ course, onClose }: { course: Course | null; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -101,45 +82,5 @@ function CourseModal({ course, onClose }: { course: Course | null; onClose: () =
         </div>
       ) : null}
     </dialog>
-  );
-}
-
-export function BrowseHome() {
-  const [selected, setSelected] = useState<Course | null>(null);
-
-  const categoryRows = CATEGORIES.filter((c) => c !== "All")
-    .map((c) => ({ title: c, items: COURSES.filter((k) => k.category === c) }))
-    .filter((r) => r.items.length > 1);
-
-  return (
-    <div className="theme-dark min-h-screen bg-[#0b0d0c] pb-24 text-white">
-      <BrowseHeader name={MEMBER} />
-      <BrowseHero course={FEATURED} onInfo={() => setSelected(FEATURED)} />
-
-      <main className="mt-10 space-y-9">
-        <CourseRow id="continue" title={`Continue Watching for ${MEMBER}`} items={CONTINUE} onOpen={setSelected} />
-        <CourseRow id="popular" title="Top Courses This Week" items={POPULAR} ranked onOpen={setSelected} />
-        {ROWS.map((row, i) => (
-          <CourseRow
-            key={row.title}
-            id={i === 2 ? "live" : undefined}
-            title={row.title}
-            items={toItems(row.ids)}
-            onOpen={setSelected}
-          />
-        ))}
-        {categoryRows.map((row) => (
-          <CourseRow
-            key={row.title}
-            title={row.title}
-            items={row.items.map((course) => ({ course }))}
-            onOpen={setSelected}
-          />
-        ))}
-        <CourseRow title="All Courses" items={COURSES.map((course) => ({ course }))} onOpen={setSelected} />
-      </main>
-
-      <CourseModal course={selected} onClose={() => setSelected(null)} />
-    </div>
   );
 }

@@ -29,7 +29,7 @@ function LockIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function CatalogCard({ course, onBuy }: { course: Course; onBuy: () => void }) {
+function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: string; onBuy: () => void }) {
   const included = course.price === "Included";
 
   return (
@@ -101,7 +101,7 @@ function CatalogCard({ course, onBuy }: { course: Course; onBuy: () => void }) {
           )}
           {included ? (
             <Link
-              href="/signin"
+              href={watchHref}
               className="inline-flex items-center gap-1.5 rounded-full bg-chip px-4 py-2.5 text-[13.5px] font-semibold text-on-chip transition-opacity hover:opacity-85"
             >
               Start watching <Arrow />
@@ -121,7 +121,8 @@ function CatalogCard({ course, onBuy }: { course: Course; onBuy: () => void }) {
   );
 }
 
-export function CourseCatalog({ tone }: { tone: Tone }) {
+/** `watchHref` is where "Start watching" goes: sign-in for visitors, the player for members. */
+export function CourseCatalog({ tone, watchHref = "/signin" }: { tone: Tone; watchHref?: string }) {
   const [active, setActive] = useState("All");
   const [buying, setBuying] = useState<CheckoutItem | null>(null);
   const shown =
@@ -165,6 +166,7 @@ export function CourseCatalog({ tone }: { tone: Tone }) {
             <CatalogCard
               key={c.id}
               course={c}
+              watchHref={watchHref}
               onBuy={() =>
                 setBuying({
                   kind: "Course",

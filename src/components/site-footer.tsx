@@ -17,7 +17,7 @@ const COLUMNS = [
     title: "Account",
     links: [
       { label: "Sign in", href: "/signin" },
-      { label: "Create an account", href: "/signin" },
+      { label: "Create an account", href: "/signup" },
       { label: "Offline downloads", href: "/#faq" },
       { label: "Help centre", href: "/#faq" },
     ],
