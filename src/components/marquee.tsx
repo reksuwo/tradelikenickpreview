@@ -1,22 +1,5 @@
 import { Container, Section, type Tone } from "./ui";
-
-type Ticker = { symbol: string; change: number; points: number[] };
-
-// Static illustrative sparklines — not live prices.
-const TICKERS: Ticker[] = [
-  { symbol: "EUR/USD", change: 0.42, points: [4, 5, 3, 6, 5, 7, 6, 8, 9] },
-  { symbol: "GBP/USD", change: -0.18, points: [8, 7, 8, 6, 7, 5, 6, 4, 5] },
-  { symbol: "USD/JPY", change: 0.67, points: [3, 4, 4, 6, 5, 6, 8, 7, 9] },
-  { symbol: "AUD/USD", change: -0.31, points: [7, 8, 6, 7, 5, 6, 4, 5, 3] },
-  { symbol: "USD/CAD", change: 0.12, points: [5, 4, 6, 5, 6, 5, 7, 6, 7] },
-  { symbol: "XAU/USD", change: 1.24, points: [2, 3, 3, 5, 4, 6, 7, 8, 9] },
-  { symbol: "AAPL", change: 0.88, points: [4, 3, 5, 4, 6, 7, 6, 8, 8] },
-  { symbol: "TSLA", change: -2.14, points: [9, 8, 9, 6, 7, 5, 4, 5, 2] },
-  { symbol: "NVDA", change: 2.51, points: [2, 4, 3, 5, 6, 5, 7, 9, 9] },
-  { symbol: "MSFT", change: 0.36, points: [5, 6, 5, 6, 7, 6, 7, 7, 8] },
-  { symbol: "AMZN", change: -0.54, points: [7, 6, 7, 5, 6, 6, 4, 5, 4] },
-  { symbol: "SPY", change: 0.21, points: [4, 5, 5, 6, 5, 6, 6, 7, 7] },
-];
+import { getMarketQuotes, MARKET_SYMBOLS, type Quote } from "@/lib/markets";
 
 const W = 56;
 const H = 20;
@@ -43,7 +26,14 @@ function Sparkline({ points, up, id }: { points: number[]; up: boolean; id: stri
   );
 }
 
-export function Marquee({ tone }: { tone: Tone }) {
+export async function Marquee({ tone }: { tone: Tone }) {
+  // Sparkline: last ~month of daily closes. Percent: latest daily change.
+  // With no data (no API key, API down) show the symbols alone, never fake numbers.
+  const quotes = await getMarketQuotes();
+  const items: { symbol: string; quote?: Quote }[] = quotes.length
+    ? quotes.map((quote) => ({ symbol: quote.symbol, quote }))
+    : MARKET_SYMBOLS.map((symbol) => ({ symbol }));
+
   return (
     <Section tone={tone} className="py-9">
       <Container>
@@ -53,21 +43,25 @@ export function Marquee({ tone }: { tone: Tone }) {
       </Container>
       <div className="fade-x mt-6 overflow-hidden">
         <div className="flex w-max animate-marquee items-center gap-10 pr-10">
-          {[...TICKERS, ...TICKERS, ...TICKERS, ...TICKERS].map((t, i) => {
-            const up = t.change >= 0;
+          {[...items, ...items, ...items, ...items].map(({ symbol, quote }, i) => {
+            const up = (quote?.change ?? 0) >= 0;
             return (
-              <span key={`${t.symbol}-${i}`} className="flex items-center gap-3 whitespace-nowrap">
+              <span key={`${symbol}-${i}`} className="flex items-center gap-3 whitespace-nowrap">
                 <span className="font-display text-[15px] font-bold tracking-[-0.03em] text-muted">
-                  {t.symbol}
+                  {symbol}
                 </span>
-                <Sparkline points={t.points} up={up} id={`spark-${i}`} />
-                <span
-                  className="tabnum text-[12.5px] font-semibold"
-                  style={{ color: up ? "var(--color-neon)" : "#ff4d5e" }}
-                >
-                  {up ? "+" : "−"}
-                  {Math.abs(t.change).toFixed(2)}%
-                </span>
+                {quote && (
+                  <>
+                    <Sparkline points={quote.points} up={up} id={`spark-${i}`} />
+                    <span
+                      className="tabnum text-[12.5px] font-semibold"
+                      style={{ color: up ? "var(--color-neon)" : "#ff4d5e" }}
+                    >
+                      {up ? "+" : "−"}
+                      {Math.abs(quote.change).toFixed(2)}%
+                    </span>
+                  </>
+                )}
               </span>
             );
           })}
