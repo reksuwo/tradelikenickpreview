@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { TERMS_VERSION } from "@/lib/legal";
 import { passwordError } from "@/lib/password-rules";
 import { readPendingSignup, setPendingSignup } from "@/lib/pending-signup";
 import { createClient, safeNext } from "@/lib/supabase/server";
@@ -66,6 +67,9 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   if (typeof password !== "string") return { error: "Choose a password." };
   const weak = passwordError(password);
   if (weak) return { error: weak };
+  if (formData.get("terms") !== "accepted") {
+    return { error: "Tick the box to agree to the Terms of Service and Privacy Policy." };
+  }
 
   const next = safeNext(formData.get("next"));
   const supabase = await createClient();
@@ -73,7 +77,8 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     email,
     password,
     options: {
-      data: { full_name: name },
+      // Record which version of the terms this person agreed to, and when.
+      data: { full_name: name, terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() },
       emailRedirectTo: callbackUrl(next),
     },
   });

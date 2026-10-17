@@ -169,6 +169,7 @@ export function CourseCatalog({ tone, watchHref = "/signin" }: { tone: Tone; wat
               watchHref={watchHref}
               onBuy={() =>
                 setBuying({
+                  ref: { type: "course", id: c.id },
                   kind: "Course",
                   title: c.title,
                   detail: `${c.level} · ${c.lessons} · ${c.hours}`,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { signIn, signUp } from "@/lib/auth-actions";
 import { AuthForm } from "./auth-form";
-import { AuthTitle, Field } from "./auth-ui";
+import { AuthTitle, Field, LegalNote, TermsCheckbox } from "./auth-ui";
 import { PasswordField } from "./password-field";
 
 export type AuthMode = "signin" | "signup";
@@ -123,13 +123,11 @@ export function AuthPanel({
           <Field label="Name" name="name" type="text" placeholder="Your name" autoComplete="name" />
           <Field label="Email" name="email" type="email" placeholder="you@example.com" autoComplete="email" />
           <PasswordField />
+          <TermsCheckbox />
         </AuthForm>
       )}
 
-      <p className="mt-7 text-[12.5px] leading-relaxed text-faint">
-        {copy.legal} you agree to the terms of service and privacy policy. Courses are educational
-        material only and involve no guarantee of trading results.
-      </p>
+      <LegalNote lead={copy.legal} />
     </>
   );
 }

@@ -1,40 +1,51 @@
+import Image from "next/image";
 import { Arrow, Container, CTA, Highlight, PlayIcon, Section, Star, type Tone } from "./ui";
-import { Poster } from "./poster";
 import { byId } from "@/lib/courses";
-
-const NEXT_UP = ["first-90", "position-sizing", "live-archive"];
+import { LECTURES, minutes } from "@/lib/lectures";
 
 function FeaturedPlayer() {
   const feature = byId("complete-system");
+  const [now, ...rest] = LECTURES;
+  const nextUp = rest.slice(0, 3);
 
   return (
     <div className="overflow-hidden rounded-[26px] border border-edge bg-card p-3 shadow-float">
-      <div className="relative aspect-video overflow-hidden rounded-[18px]">
-        <Poster variant={feature.poster} label="Complete System" />
+      <div className="relative aspect-video overflow-hidden rounded-[18px] bg-art-dark">
+        <Image
+          src={now.thumbnail}
+          alt={`Lecture ${now.n}: ${now.title}`}
+          fill
+          loading="eager"
+          fetchPriority="high"
+          sizes="(min-width: 1024px) 560px, 100vw"
+          className="object-cover"
+        />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+        {/* Only the player bar sits on the artwork, so the thumbnail's own title stays readable. */}
+        <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/75 to-transparent" />
 
         <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md bg-accent px-2 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-on-accent">
           Now streaming
         </span>
 
-        <div className="absolute inset-x-4 bottom-4">
-          <p className="font-display text-[19px] font-extrabold leading-tight text-white sm:text-[22px]">
-            {feature.title}
-          </p>
-          <p className="mt-1 text-[12px] font-medium tabnum text-white/65">
-            Episode 1 &middot; How markets actually move &middot; 14 min
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-on-accent shadow-glow">
-              <PlayIcon className="size-4 translate-x-px" />
-            </span>
-            <div className="h-1 flex-1 rounded-full bg-white/25">
-              <div className="h-full w-[22%] rounded-full bg-accent" />
-            </div>
-            <span className="shrink-0 text-[11.5px] font-semibold tabnum text-white/60">22%</span>
+        <div className="absolute inset-x-4 bottom-3.5 flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-on-accent shadow-glow">
+            <PlayIcon className="size-4 translate-x-px" />
+          </span>
+          <div className="h-1 flex-1 rounded-full bg-white/30">
+            <div className="h-full w-[22%] rounded-full bg-accent" />
           </div>
+          <span className="shrink-0 text-[11.5px] font-semibold tabnum text-white/80">22%</span>
         </div>
+      </div>
+
+      <div className="px-2 pt-4">
+        <p className="font-display text-[19px] font-extrabold leading-tight text-fg sm:text-[21px]">
+          {feature.title}
+        </p>
+        <p className="mt-1 text-[12.5px] font-medium tabnum text-muted">
+          Lecture {now.n} &middot; {now.title} &middot; {minutes(now.seconds)}
+        </p>
       </div>
 
       <div className="flex items-center justify-between px-2 pb-1 pt-4">
@@ -43,22 +54,27 @@ function FeaturedPlayer() {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5 px-1 pb-1">
-        {NEXT_UP.map((id) => {
-          const c = byId(id);
-          return (
-            <div key={id} className="group/next">
-              <div className="relative aspect-video overflow-hidden rounded-xl border border-edge">
-                <Poster variant={c.poster} label="" />
-                <span className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition-opacity group-hover/next:opacity-100">
-                  <span className="grid size-7 place-items-center rounded-full bg-accent text-on-accent">
-                    <PlayIcon className="size-3 translate-x-px" />
-                  </span>
+        {nextUp.map((l) => (
+          <div key={l.n} className="group/next">
+            <div className="relative aspect-video overflow-hidden rounded-xl border border-edge bg-art-dark">
+              <Image
+                src={l.thumbnail}
+                alt={`Lecture ${l.n}: ${l.title}`}
+                fill
+                sizes="(min-width: 1024px) 180px, 33vw"
+                className="object-cover"
+              />
+              <span className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition-opacity group-hover/next:opacity-100">
+                <span className="grid size-7 place-items-center rounded-full bg-accent text-on-accent">
+                  <PlayIcon className="size-3 translate-x-px" />
                 </span>
-              </div>
-              <p className="mt-1.5 truncate text-[11.5px] font-semibold text-muted">{c.title}</p>
+              </span>
             </div>
-          );
-        })}
+            <p className="mt-1.5 truncate text-[11.5px] font-semibold text-muted">
+              {l.n}. {l.title}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

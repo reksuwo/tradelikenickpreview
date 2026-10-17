@@ -1,9 +1,52 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { Poster } from "../poster";
 import { PlayIcon, Star } from "../ui";
 import type { Course } from "@/lib/courses";
+import { clockTime, LECTURE_COURSE_ID, LECTURES, minutes } from "@/lib/lectures";
+
+function Episodes() {
+  return (
+    <div className="border-t border-white/10 px-6 pb-8 pt-6 sm:px-10">
+      <h3 className="text-[20px] font-bold">Episodes</h3>
+      <ol className="mt-4 divide-y divide-white/10">
+        {LECTURES.map((l) => (
+          <li key={l.n} className="group flex items-center gap-4 py-4">
+            <span className="w-5 shrink-0 text-center font-display text-[20px] font-extrabold tabnum text-white/50">
+              {l.n}
+            </span>
+            <div className="relative aspect-video w-[120px] shrink-0 overflow-hidden rounded-md bg-black ring-1 ring-white/10 sm:w-[150px]">
+              <Image src={l.thumbnail} alt="" fill sizes="150px" className="object-cover" />
+              <span className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="grid size-8 place-items-center rounded-full border border-white/80 bg-black/50 text-white">
+                  <PlayIcon className="size-3.5 translate-x-px" />
+                </span>
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="truncate text-[15px] font-bold">
+                  {l.title}
+                  {l.free ? (
+                    <span className="ml-2 rounded bg-neon px-1.5 py-0.5 align-middle text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-ink">
+                      Free
+                    </span>
+                  ) : null}
+                </p>
+                <span className="shrink-0 text-[13px] font-semibold tabnum text-white/60" title={clockTime(l.seconds)}>
+                  {minutes(l.seconds)}
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-2 text-[13.5px] leading-relaxed text-white/65">{l.desc}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 /** Course details dialog, opened from any card on the member pages. */
 export function CourseModal({ course, onClose }: { course: Course | null; onClose: () => void }) {
@@ -21,7 +64,7 @@ export function CourseModal({ course, onClose }: { course: Course | null; onClos
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto w-[min(860px,calc(100vw-32px))] overflow-hidden rounded-2xl bg-[#141414] p-0 text-white shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[min(860px,calc(100vw-32px))] overflow-y-auto overscroll-contain rounded-2xl bg-[#141414] p-0 text-white shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm"
     >
       {course ? (
         <div>
@@ -79,6 +122,8 @@ export function CourseModal({ course, onClose }: { course: Course | null; onClos
               </div>
             </dl>
           </div>
+
+          {course.id === LECTURE_COURSE_ID ? <Episodes /> : null}
         </div>
       ) : null}
     </dialog>

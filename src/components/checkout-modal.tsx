@@ -1,9 +1,17 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import { startCheckout } from "@/lib/checkout-actions";
+import type { ProductRef } from "@/lib/products";
 import { Check } from "./ui";
 
 export type CheckoutItem = {
+  /** Which catalogue item to charge for; the server looks up its price. */
+  ref: ProductRef;
   kind: "Course" | "Trading book";
   title: string;
   detail: string;
@@ -13,22 +21,25 @@ export type CheckoutItem = {
 };
 
 /*
-  Checkout pop-up. This is the UI only: no payment provider is connected yet,
-  so submitting never sends card details anywhere — it shows a "preview" notice.
-  Wire the submit handler to Stripe before going live.
+  Checkout pop-up. The payment form is Stripe's Embedded Checkout, so card
+  details go straight to Stripe and never touch this site. When payment
+  succeeds Stripe sends the buyer to /account/billing, where the order shows.
 */
 
-function formatCard(v: string) {
-  return v
-    .replace(/\D/g, "")
-    .slice(0, 16)
-    .replace(/(\d{4})(?=\d)/g, "$1 ");
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+// Load Stripe.js once, the first time someone opens checkout.
+let stripePromise: Promise<Stripe | null> | undefined;
+function getStripe() {
+  stripePromise ??= loadStripe(PUBLISHABLE_KEY!);
+  return stripePromise;
 }
 
-function formatExpiry(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 4);
-  return d.length > 2 ? `${d.slice(0, 2)} / ${d.slice(2)}` : d;
-}
+type Status =
+  | { state: "loading" }
+  | { state: "ready"; clientSecret: string }
+  | { state: "signin" }
+  | { state: "error"; message: string };
 
 function LockIcon({ className = "" }: { className?: string }) {
   return (
@@ -52,26 +63,6 @@ function LockIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function Field({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="text-[12.5px] font-semibold text-ink-700">{label}</span>
-      <span className="mt-1.5 block">{children}</span>
-    </label>
-  );
-}
-
-const INPUT =
-  "w-full rounded-xl border border-line bg-white px-3.5 py-3 text-[14.5px] text-ink outline-none transition-colors placeholder:text-ink-300 focus:border-ink focus:ring-2 focus:ring-neon/40";
-
 export function CheckoutModal({
   item,
   onClose,
@@ -79,9 +70,13 @@ export function CheckoutModal({
   item: CheckoutItem | null;
   onClose: () => void;
 }) {
-  // Keyed by title so every newly opened item starts with a fresh form.
+  // Keyed by item so every newly opened item starts a fresh checkout.
   return item ? (
-    <CheckoutDialog key={item.title} item={item} onClose={onClose} />
+    <CheckoutDialog
+      key={`${item.ref.type}:${item.ref.id}`}
+      item={item}
+      onClose={onClose}
+    />
   ) : null;
 }
 
@@ -92,10 +87,18 @@ function CheckoutDialog({
   item: CheckoutItem;
   onClose: () => void;
 }) {
-  const [card, setCard] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [done, setDone] = useState(false);
+  const pathname = usePathname();
+  const [status, setStatus] = useState<Status>(() =>
+    PUBLISHABLE_KEY
+      ? { state: "loading" }
+      : {
+          state: "error",
+          message:
+            "Payments aren't set up yet. Add the Stripe keys to .env and restart the server.",
+        },
+  );
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { type, id } = item.ref;
 
   // Esc to close, lock page scroll, move focus into the dialog.
   useEffect(() => {
@@ -109,6 +112,35 @@ function CheckoutDialog({
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
+
+  // Ask the server for a Checkout Session for this item.
+  useEffect(() => {
+    if (!PUBLISHABLE_KEY) return;
+    let live = true;
+    startCheckout({ type, id }).then(
+      (result) => {
+        if (!live) return;
+        if ("clientSecret" in result) {
+          setStatus({ state: "ready", clientSecret: result.clientSecret });
+        } else if ("signIn" in result) {
+          setStatus({ state: "signin" });
+        } else {
+          setStatus({ state: "error", message: result.error });
+        }
+      },
+      () =>
+        live &&
+        setStatus({
+          state: "error",
+          message: "We couldn't start checkout. Check your connection and try again.",
+        }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [type, id]);
+
+  const next = encodeURIComponent(pathname);
 
   return (
     <div className="theme-light fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6">
@@ -166,16 +198,8 @@ function CheckoutDialog({
             </div>
           </div>
 
-          <dl className="relative mt-8 space-y-3 border-t border-white/10 pt-6 text-[14px]">
-            <div className="flex justify-between text-white/70">
-              <dt>Subtotal</dt>
-              <dd className="tabnum">{item.price}</dd>
-            </div>
-            <div className="flex justify-between text-white/70">
-              <dt>Tax</dt>
-              <dd>Calculated at payment</dd>
-            </div>
-            <div className="flex justify-between border-t border-white/10 pt-3 text-[17px] font-extrabold">
+          <dl className="relative mt-8 border-t border-white/10 pt-6 text-[17px] font-extrabold">
+            <div className="flex justify-between">
               <dt>Total</dt>
               <dd className="tabnum">{item.price}</dd>
             </div>
@@ -195,147 +219,68 @@ function CheckoutDialog({
           </ul>
         </aside>
 
-        {/* Payment form */}
+        {/* Payment */}
         <div className="p-6 sm:p-8 md:order-1">
-          {done ? (
-            <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-              <span className="grid size-14 place-items-center rounded-full bg-neon text-ink">
-                <Check className="size-6" />
-              </span>
-              <h2
-                id="checkout-title"
-                className="mt-5 text-[24px] font-extrabold text-ink"
-              >
-                Checkout preview
-              </h2>
-              <p className="mt-2 max-w-sm text-[14.5px] leading-relaxed text-ink-500">
-                Payments aren&rsquo;t connected yet, so nothing was charged and
-                no card details were sent. Once Stripe is connected, this
-                button will complete the purchase.
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-7 rounded-full bg-ink px-6 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
-              >
-                Back to browsing
-              </button>
-            </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setDone(true);
-              }}
-            >
-              <h2
-                id="checkout-title"
-                className="pr-10 text-[24px] font-extrabold text-ink"
-              >
-                Checkout
-              </h2>
-              <p className="mt-1 text-[14px] text-ink-500">
-                Complete your purchase securely.
-              </p>
+          <h2
+            id="checkout-title"
+            className="pr-10 text-[24px] font-extrabold text-ink"
+          >
+            Checkout
+          </h2>
+          <p className="mt-1 flex items-center gap-1.5 text-[14px] text-ink-500">
+            <LockIcon className="size-3.5" />
+            Payments securely processed by Stripe
+          </p>
 
-              <div className="mt-6 space-y-4">
-                <Field label="Email">
-                  <input
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    className={INPUT}
-                  />
-                </Field>
-
-                <Field label="Card number">
-                  <div className="relative">
-                    <input
-                      inputMode="numeric"
-                      autoComplete="cc-number"
-                      required
-                      placeholder="1234 1234 1234 1234"
-                      value={card}
-                      onChange={(e) => setCard(formatCard(e.target.value))}
-                      className={`${INPUT} pr-24 tabnum`}
-                    />
-                    <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 gap-1">
-                      {["VISA", "MC", "AMEX"].map((b) => (
-                        <span
-                          key={b}
-                          className="rounded border border-line px-1 py-0.5 text-[8.5px] font-extrabold text-ink-500"
-                        >
-                          {b}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                </Field>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Expiry">
-                    <input
-                      inputMode="numeric"
-                      autoComplete="cc-exp"
-                      required
-                      placeholder="MM / YY"
-                      value={expiry}
-                      onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                      className={`${INPUT} tabnum`}
-                    />
-                  </Field>
-                  <Field label="CVC">
-                    <input
-                      inputMode="numeric"
-                      autoComplete="cc-csc"
-                      required
-                      maxLength={4}
-                      placeholder="123"
-                      className={`${INPUT} tabnum`}
-                    />
-                  </Field>
-                </div>
-                <Field label="Name on card">
-                  <input
-                    autoComplete="cc-name"
-                    required
-                    placeholder="Full name"
-                    className={INPUT}
-                  />
-                </Field>
-
-                <Field label="Country">
-                  <select
-                    autoComplete="country-name"
-                    className={INPUT}
-                    defaultValue="United States"
+          <div className="mt-6">
+            {status.state === "ready" ? (
+              <EmbeddedCheckoutProvider
+                stripe={getStripe()}
+                options={{ clientSecret: status.clientSecret }}
+              >
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            ) : status.state === "signin" ? (
+              <div className="rounded-2xl border border-line p-6">
+                <p className="text-[16px] font-bold text-ink">
+                  Sign in to buy
+                </p>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-ink-500">
+                  Purchases are added to your TradeLikeNick account so you can
+                  watch or download them anywhere.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href={`/signin?next=${next}`}
+                    className="rounded-full bg-ink px-6 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-85"
                   >
-                    {[
-                      "United States",
-                      "Canada",
-                      "United Kingdom",
-                      "Australia",
-                      "Philippines",
-                      "Other",
-                    ].map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                </Field>
+                    Sign in
+                  </Link>
+                  <Link
+                    href={`/signup?next=${next}`}
+                    className="rounded-full border border-line px-6 py-3 text-[14px] font-semibold text-ink transition-colors hover:border-ink"
+                  >
+                    Create an account
+                  </Link>
+                </div>
               </div>
-
-              <button
-                type="submit"
-                className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-neon px-6 py-4 text-[15px] font-bold text-ink shadow-[0_12px_30px_-12px_rgba(0,255,133,0.7)] transition-all hover:-translate-y-0.5 hover:opacity-90"
+            ) : status.state === "error" ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-line p-6 text-[14.5px] leading-relaxed text-ink-700"
               >
-                <LockIcon className="size-4" />
-                Pay {item.price}
-              </button>
-              <p className="mt-3 text-center text-[12px] text-ink-500">
-                Payments securely processed by Stripe &middot; 30-day refund
-              </p>
-            </form>
-          )}
+                {status.message}
+              </div>
+            ) : (
+              <div
+                role="status"
+                className="flex min-h-[320px] items-center justify-center gap-3 text-[14px] text-ink-500"
+              >
+                <span className="size-5 animate-spin rounded-full border-2 border-line border-t-ink" />
+                Loading secure checkout…
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,53 @@
 "use client";
 
+import Link from "next/link";
 import type { AuthState } from "@/lib/auth-actions";
+
+/** Links open in a new tab so the half-filled form isn't lost. */
+function LegalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="font-semibold text-fg underline decoration-accent decoration-2 underline-offset-4 hover:text-accent-ink"
+    >
+      {children}
+    </Link>
+  );
+}
+
+/** Required tick box on sign-up. The server checks it too. */
+export function TermsCheckbox() {
+  return (
+    <label htmlFor="terms" className="flex cursor-pointer items-start gap-3">
+      <input
+        id="terms"
+        name="terms"
+        type="checkbox"
+        value="accepted"
+        required
+        className="mt-0.5 size-4.5 shrink-0 cursor-pointer rounded accent-accent"
+      />
+      <span className="text-[13.5px] leading-relaxed text-muted">
+        I am 18 or older and I agree to the <LegalLink href="/terms">Terms of Service</LegalLink> and{" "}
+        <LegalLink href="/privacy">Privacy Policy</LegalLink>. I understand the courses are education,
+        not financial advice, and that trading carries a risk of loss.
+      </span>
+    </label>
+  );
+}
+
+/** "By signing in you agree to…" line under the auth forms. */
+export function LegalNote({ lead }: { lead: string }) {
+  return (
+    <p className="mt-7 text-[12.5px] leading-relaxed text-faint">
+      {lead} you agree to the <LegalLink href="/terms">Terms of Service</LegalLink> and{" "}
+      <LegalLink href="/privacy">Privacy Policy</LegalLink>. Courses are educational material only and
+      involve no guarantee of trading results.
+    </p>
+  );
+}
 
 export function Field({
   label,

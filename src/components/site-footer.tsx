@@ -34,10 +34,10 @@ const COLUMNS = [
   {
     title: "Legal",
     links: [
-      { label: "Terms of service", href: "/#faq" },
-      { label: "Privacy policy", href: "/#faq" },
-      { label: "Refund policy", href: "/#access" },
-      { label: "Risk disclosure", href: "/#faq" },
+      { label: "Terms of service", href: "/terms" },
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Refund policy", href: "/terms#refunds" },
+      { label: "Risk disclosure", href: "/terms#risk" },
     ],
   },
 ];

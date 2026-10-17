@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { ChartBackdrop } from "../chart-backdrop";
 import { PlayIcon } from "../ui";
@@ -11,7 +12,16 @@ import type { Course } from "@/lib/courses";
  */
 const HERO_VIDEO = "/hero.mp4";
 
-export function BrowseHero({ course, onInfo }: { course: Course; onInfo: () => void }) {
+export function BrowseHero({
+  course,
+  art,
+  onInfo,
+}: {
+  course: Course;
+  /** Key art behind the copy while there is no trailer; the chart backdrop otherwise. */
+  art?: string;
+  onInfo: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "failed">("loading");
   const [muted, setMuted] = useState(true);
@@ -27,7 +37,27 @@ export function BrowseHero({ course, onInfo }: { course: Course; onInfo: () => v
     <section className="px-4 sm:px-8 lg:px-[60px]">
       <div className="relative isolate h-[min(78vh,820px)] min-h-[520px] overflow-hidden rounded-[22px] border border-white/10 bg-[#050807]">
         {/* Video, or the animated chart while there is none */}
-        {status !== "playing" ? <ChartBackdrop className="opacity-90" /> : null}
+        {status !== "playing" && art ? (
+          <div
+            aria-hidden
+            className="absolute inset-y-0 right-0 w-full lg:w-[72%]"
+            style={{
+              maskImage: "linear-gradient(to right, transparent, #000 32%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent, #000 32%)",
+            }}
+          >
+            <Image
+              src={art}
+              alt=""
+              fill
+              loading="eager"
+              fetchPriority="high"
+              sizes="(min-width: 1024px) 72vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
+        {status !== "playing" && !art ? <ChartBackdrop className="opacity-90" /> : null}
         {status !== "failed" ? (
           <video
             ref={videoRef}

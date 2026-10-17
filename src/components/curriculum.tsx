@@ -1,70 +1,12 @@
+import Image from "next/image";
 import { Arrow, Container, CTA, PlayIcon, Section, type Tone } from "./ui";
 import { ChartBackdrop } from "./chart-backdrop";
+import { clockTime, LECTURES } from "@/lib/lectures";
 
-const EPISODES = [
-  {
-    n: "1",
-    title: "How markets actually move",
-    time: "14 min",
-    desc: "Auctions, participants, and why price spends most of its life going nowhere.",
-    free: true,
-  },
-  {
-    n: "2",
-    title: "Reading a chart without indicators",
-    time: "22 min",
-    desc: "The four marks that go on every chart before the open, and nothing else.",
-    free: true,
-  },
-  {
-    n: "3",
-    title: "Setup one: the opening drive",
-    time: "31 min",
-    desc: "Conditions, trigger, invalidation, and 48 worked examples including the failures.",
-  },
-  {
-    n: "4",
-    title: "Setup two: the failed breakout",
-    time: "28 min",
-    desc: "How to spot a trap forming and time the flip without guessing the turn.",
-  },
-  {
-    n: "5",
-    title: "Setup three: value area rejection",
-    time: "26 min",
-    desc: "The range-day trade, when to take it, and the days to leave it alone entirely.",
-  },
-  {
-    n: "6",
-    title: "Risk, sizing and the daily stop",
-    time: "34 min",
-    desc: "Deciding size before emotion arrives, and the ladder that halves it in a drawdown.",
-  },
-  {
-    n: "7",
-    title: "Execution under pressure",
-    time: "19 min",
-    desc: "Order types, slippage, and the ten-second rule that stops the chase.",
-  },
-  {
-    n: "8",
-    title: "Writing your one-page plan",
-    time: "24 min",
-    desc: "The template, the rules worth keeping, and how to test one before it goes live.",
-  },
-  {
-    n: "9",
-    title: "Journaling and the Friday review",
-    time: "21 min",
-    desc: "Ninety seconds per trade, and the twenty minutes a week that find your leaks.",
-  },
-  {
-    n: "10",
-    title: "Going live and scaling up",
-    time: "29 min",
-    desc: "Sim to live, prop evaluations, and what a realistic first funded month looks like.",
-  },
-];
+const EPISODES = LECTURES;
+
+const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+const countWord = (n: number) => COUNT_WORDS[n] ?? String(n);
 
 export function Curriculum({
   tone,
@@ -86,14 +28,14 @@ export function Curriculum({
               Inside the flagship series
             </h2>
             <p className="mt-5 text-[16.5px] leading-relaxed text-muted">
-              <span className="font-semibold text-fg">The Complete Trading System</span> is ten
-              episodes of core footage plus 138 supporting lessons. The first two are free to watch
-              before you decide anything.
+              <span className="font-semibold text-fg">The Complete Trading System</span> is{" "}
+              {countWord(EPISODES.length)} lectures of core footage plus 138 supporting lessons. The
+              first two are free to watch before you decide anything.
             </p>
 
             <div className="mt-8 grid grid-cols-2 gap-4">
               {[
-                { k: "Episodes", v: "10" },
+                { k: "Lectures", v: String(EPISODES.length) },
                 { k: "Lessons", v: "148" },
                 { k: "Runtime", v: "62 hrs" },
                 { k: "Drills", v: "32" },
@@ -122,23 +64,21 @@ export function Curriculum({
                   {e.n}
                 </span>
 
-                <div className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-lg border border-edge bg-art-dark sm:w-[132px]">
-                  <span
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)",
-                      backgroundSize: "16px 16px",
-                    }}
+                <div className="relative aspect-video w-[120px] shrink-0 overflow-hidden rounded-lg border border-edge bg-art-dark sm:w-[160px]">
+                  <Image
+                    src={e.thumbnail}
+                    alt={`Lecture ${e.n}: ${e.title}`}
+                    fill
+                    sizes="(min-width: 640px) 160px, 120px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                   />
-                  <span className="absolute inset-0 grid place-items-center">
-                    <span className="grid size-8 place-items-center rounded-full bg-accent/20 text-accent transition-all duration-200 group-hover:bg-accent group-hover:text-on-accent">
+                  <span className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <span className="grid size-8 place-items-center rounded-full bg-accent text-on-accent">
                       <PlayIcon className="size-3.5 translate-x-px" />
                     </span>
                   </span>
                   <span className="absolute bottom-1.5 right-1.5 rounded bg-black/85 px-1 py-0.5 text-[9.5px] font-bold tabnum text-white">
-                    {e.time}
+                    {clockTime(e.seconds)}
                   </span>
                 </div>
 
@@ -159,7 +99,8 @@ export function Curriculum({
             {limit && EPISODES.length > limit ? (
               <div className="flex flex-col items-start justify-between gap-4 bg-sunken p-5 sm:flex-row sm:items-center">
                 <p className="text-[14px] font-semibold text-muted">
-                  +{EPISODES.length - limit} more episodes in this course
+                  +{EPISODES.length - limit} more{" "}
+                  {EPISODES.length - limit === 1 ? "lecture" : "lectures"} in this course
                 </p>
                 <CTA href="/courses">
                   View all courses <Arrow />

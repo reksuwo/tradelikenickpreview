@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import Image from "next/image";
+import { useRef, type ReactNode } from "react";
 import { Poster } from "../poster";
 import { PlayIcon } from "../ui";
 import type { Course } from "@/lib/courses";
+import { clockTime, type Lecture } from "@/lib/lectures";
 
 export type RowItem = {
   course: Course;
@@ -86,7 +88,88 @@ function Card({ item, rank, onOpen }: { item: RowItem; rank?: number; onOpen: ()
   );
 }
 
-/** One horizontally scrolling shelf, with Netflix-style arrows on wide screens. */
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="size-3.5">
+      <rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" />
+      <path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LectureCard({ lecture, onOpen }: { lecture: Lecture; onOpen: () => void }) {
+  return (
+    <li className="w-[240px] shrink-0 snap-start sm:w-[270px] lg:w-[300px]">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Lecture ${lecture.n}: ${lecture.title} — more info`}
+        className="group relative block w-full text-left"
+      >
+        <div className="relative aspect-video overflow-hidden rounded-xl bg-[#141414] ring-1 ring-white/10 transition-all duration-300 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-neon group-focus-visible:ring-2 group-focus-visible:ring-neon">
+          <Image
+            src={lecture.thumbnail}
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 300px, 270px"
+            className="object-cover"
+          />
+
+          {lecture.free ? (
+            <span className="absolute left-2.5 top-2.5 rounded bg-neon px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-ink">
+              Free
+            </span>
+          ) : (
+            <span
+              title="Purchase to unlock"
+              className="absolute left-2.5 top-2.5 grid size-6 place-items-center rounded-full bg-black/80 text-white"
+            >
+              <LockIcon />
+              <span className="sr-only">Locked — purchase to unlock</span>
+            </span>
+          )}
+
+          <span className="absolute bottom-2 right-2 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-bold tabnum text-white">
+            {clockTime(lecture.seconds)}
+          </span>
+
+          <span className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <span className="grid size-11 place-items-center rounded-full bg-white text-ink">
+              <PlayIcon className="size-5 translate-x-0.5" />
+            </span>
+          </span>
+        </div>
+
+        <p className="mt-2.5 truncate text-[14px] font-bold text-white">
+          <span className="text-white/50">{lecture.n}.</span> {lecture.title}
+        </p>
+      </button>
+    </li>
+  );
+}
+
+/** The five recorded lectures of one course, in watch order. */
+export function LectureRow({
+  id,
+  title,
+  lectures,
+  onOpen,
+}: {
+  id?: string;
+  title: string;
+  lectures: Lecture[];
+  onOpen: () => void;
+}) {
+  return (
+    <RowFrame id={id} title={title}>
+      {lectures.map((l) => (
+        <LectureCard key={l.n} lecture={l} onOpen={onOpen} />
+      ))}
+    </RowFrame>
+  );
+}
+
+/** One horizontally scrolling shelf of courses. */
 export function CourseRow({
   id,
   title,
@@ -100,6 +183,22 @@ export function CourseRow({
   ranked?: boolean;
   onOpen: (course: Course) => void;
 }) {
+  return (
+    <RowFrame id={id} title={title}>
+      {items.map((item, i) => (
+        <Card
+          key={`${item.course.id}-${i}`}
+          item={item}
+          rank={ranked ? i + 1 : undefined}
+          onOpen={() => onOpen(item.course)}
+        />
+      ))}
+    </RowFrame>
+  );
+}
+
+/** Title, horizontal scroller and Netflix-style arrows on wide screens. */
+function RowFrame({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   const scroller = useRef<HTMLUListElement>(null);
 
   const scroll = (dir: 1 | -1) => {
@@ -116,14 +215,7 @@ export function CourseRow({
           ref={scroller}
           className="no-scrollbar flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 py-3 sm:scroll-px-8 sm:px-8 lg:scroll-px-[60px] lg:px-[60px]"
         >
-          {items.map((item, i) => (
-            <Card
-              key={`${item.course.id}-${i}`}
-              item={item}
-              rank={ranked ? i + 1 : undefined}
-              onOpen={() => onOpen(item.course)}
-            />
-          ))}
+          {children}
         </ul>
 
         <button

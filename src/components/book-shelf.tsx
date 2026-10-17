@@ -14,6 +14,7 @@ export function BookShelf({ tone }: { tone: Tone }) {
 
   const buy = (b: Book) =>
     setBuying({
+      ref: { type: "book", id: b.id },
       kind: "Trading book",
       title: b.title,
       detail: `${b.format} · ${b.pages} pages`,
