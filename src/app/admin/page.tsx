@@ -4,7 +4,7 @@ import { AdminHeading, Badge, Card, Empty, SearchBox, StatTile, TABLE, TD, TH, T
 import { ColumnChart } from "@/components/admin/column-chart";
 import { requireAdmin } from "@/lib/admin";
 import { courseStats, daily, lastDays, overview, recentOrders } from "@/lib/admin-data";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
 import { LoadError, OrderStatus } from "@/components/admin/admin-parts";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -14,15 +14,21 @@ export default async function AdminOverview() {
 
   let data;
   try {
-    const [stats, days, orders, courses] = await Promise.all([overview(), daily(lastDays(30)), recentOrders(10), courseStats()]);
-    data = { stats, days, orders, courses };
+    const [stats, days, orders, courses, catalogue] = await Promise.all([
+      overview(),
+      daily(lastDays(30)),
+      recentOrders(10),
+      courseStats(),
+      getAllCourses(),
+    ]);
+    data = { stats, days, orders, courses, catalogue };
   } catch (error) {
     return <LoadError error={error} />;
   }
-  const { stats, days, orders, courses } = data;
+  const { stats, days, orders, courses, catalogue } = data;
 
   const delta = stats.revenuePrev30 ? (stats.revenue30 - stats.revenuePrev30) / stats.revenuePrev30 : null;
-  const topCourses = COURSES.map((c) => ({ course: c, ...courses[c.id] }))
+  const topCourses = catalogue.map((c) => ({ course: c, ...courses[c.id] }))
     .filter((c) => c.owners || c.learners)
     .sort((a, b) => b.revenue - a.revenue || b.learners - a.learners)
     .slice(0, 10);

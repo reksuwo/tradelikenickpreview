@@ -1,10 +1,9 @@
 import Image from "next/image";
 import { Arrow, Container, CTA, Highlight, PlayIcon, Section, Star, type Tone } from "./ui";
-import { byId } from "@/lib/courses";
-import { LECTURES, minutes } from "@/lib/lectures";
+import { byId, type Course } from "@/lib/courses";
+import { LECTURE_COURSE_ID, LECTURES, minutes } from "@/lib/lectures";
 
-function FeaturedPlayer() {
-  const feature = byId("complete-system");
+function FeaturedPlayer({ feature }: { feature: Course }) {
   const [now, ...rest] = LECTURES;
   const nextUp = rest.slice(0, 3);
 
@@ -80,7 +79,10 @@ function FeaturedPlayer() {
   );
 }
 
-export function Hero({ tone }: { tone: Tone }) {
+/** `courses` is the live catalogue; the flagship falls back to the built-in copy if it's missing. */
+export function Hero({ tone, courses = [] }: { tone: Tone; courses?: Course[] }) {
+  const feature = courses.find((c) => c.id === LECTURE_COURSE_ID) ?? byId(LECTURE_COURSE_ID);
+
   return (
     <Section tone={tone} className="relative overflow-hidden">
       <div
@@ -137,7 +139,7 @@ export function Hero({ tone }: { tone: Tone }) {
           </div>
 
           <div className="lg:pl-4">
-            <FeaturedPlayer />
+            <FeaturedPlayer feature={feature} />
           </div>
         </div>
       </Container>

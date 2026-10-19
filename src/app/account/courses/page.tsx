@@ -3,14 +3,15 @@ import Link from "next/link";
 import { PageHeading } from "@/components/account/account-ui";
 import { Poster } from "@/components/poster";
 import { PlayIcon } from "@/components/ui";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
 import { getLibrary } from "@/lib/purchases";
 
 export const metadata: Metadata = { title: "My Courses — TradeLikeNick" };
 
 export default async function MyCoursesPage() {
   const library = await getLibrary();
-  const courses = COURSES.filter((c) => library.courses.includes(c.id));
+  // Hidden courses included: people who own one keep it.
+  const courses = (await getAllCourses()).filter((c) => library.courses.includes(c.id));
   const boughtAny = courses.some((c) => c.price !== "Included");
 
   return (

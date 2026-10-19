@@ -1,6 +1,6 @@
 import "server-only";
 import { BOOKS } from "./books";
-import { COURSES } from "./courses";
+import { getAllCourses } from "./course-store";
 import { db } from "./db";
 
 /**
@@ -230,7 +230,7 @@ export type MemberRow = {
 };
 
 const memberColumns = () => db`
-  u.id, u.email, ${memberName()} as name, u.raw_user_meta_data->>'avatar_url' as "avatarUrl",
+  u.id, u.email, ${memberName()} as name, coalesce('/api/avatars/' || (u.raw_user_meta_data->>'photo'), u.raw_user_meta_data->>'avatar_url') as "avatarUrl",
   u.created_at as "createdAt", u.last_sign_in_at as "lastSignInAt",
   u.email_confirmed_at is not null as confirmed, u.raw_app_meta_data->>'provider' as provider,
   coalesce(o.orders, 0) as orders, coalesce(o.spent, 0) as "spentCents", w.last as "lastWatchedAt"
@@ -314,7 +314,8 @@ export type CourseStats = {
 
 /** Sales, lectures and learning for every course in the catalogue. */
 export async function courseStats(): Promise<Record<string, CourseStats>> {
-  const [sales, lectures, learning] = await Promise.all([
+  const [courses, sales, lectures, learning] = await Promise.all([
+    getAllCourses(),
     db<{ courseId: string; owners: number; revenue: number }[]>`
       select product_id as "courseId", count(distinct user_id)::int as owners,
              coalesce(sum(amount_cents) filter (where source = 'stripe'), 0)::float8 as revenue
@@ -343,7 +344,7 @@ export async function courseStats(): Promise<Record<string, CourseStats>> {
   ]);
 
   const stats: Record<string, CourseStats> = {};
-  for (const c of COURSES) {
+  for (const c of courses) {
     stats[c.id] = { courseId: c.id, owners: 0, revenue: 0, lectures: 0, published: 0, learners: 0, finishers: 0, watchSeconds: 0 };
   }
   for (const r of [...sales, ...lectures, ...learning]) {

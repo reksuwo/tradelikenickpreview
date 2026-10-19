@@ -6,7 +6,8 @@ import { LecturePlayer } from "@/components/browse/lecture-player";
 import { UnlockButton } from "@/components/browse/unlock-button";
 import { Poster } from "@/components/poster";
 import { PlayIcon } from "@/components/ui";
-import { COURSES } from "@/lib/courses";
+import { isAdmin } from "@/lib/admin";
+import { getCourse } from "@/lib/course-store";
 import { progressFor, publishedLectures } from "@/lib/lecture-store";
 import { clockTime, minutes, type Lecture } from "@/lib/lectures";
 import { getLibrary } from "@/lib/purchases";
@@ -20,7 +21,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { course: courseId } = await params;
-  const course = COURSES.find((c) => c.id === courseId);
+  const course = await getCourse(courseId);
   return { title: `${course?.title ?? "Watch"} — TradeLikeNick` };
 }
 
@@ -52,12 +53,15 @@ async function videoSource(lecture: Lecture) {
  */
 export default async function WatchPage({ params, searchParams }: Props) {
   const { course: courseId } = await params;
-  const course = COURSES.find((c) => c.id === courseId);
+  const course = await getCourse(courseId);
   if (!course) notFound();
 
   const { lecture: lectureParam } = await searchParams;
   const library = await getLibrary();
   const owned = library.courses.includes(course.id);
+  const user = await getUser();
+  // A hidden course is only there for people who own it, and admins checking it.
+  if (!course.published && !owned && !isAdmin(user)) notFound();
 
   const lectures = (await publishedLectures())[course.id] ?? [];
   const current = lectures.find((l) => String(l.n) === lectureParam) ?? lectures[0];
@@ -66,7 +70,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const src = source === "missing" || source === "error" ? null : source;
   const nextLecture = current ? lectures[lectures.indexOf(current) + 1] : undefined;
 
-  const user = await getUser();
   const progress = user
     ? await progressFor(user.id, lectures.flatMap((l) => (l.id ? [l.id] : [])))
     : {};

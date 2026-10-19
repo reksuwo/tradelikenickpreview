@@ -36,7 +36,7 @@ import {
   type DateRange,
 } from "@/lib/admin-data";
 import { BOOKS } from "@/lib/books";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
 import { LECTURE_COURSE_ID } from "@/lib/lectures";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -90,16 +90,22 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
   let data;
   try {
-    const [series, learners, courses, books] = await Promise.all([daily(range, bucket), activeLearners(range), courseStats(), bookStats()]);
-    const withLectures = COURSES.filter((c) => courses[c.id].lectures > 0);
+    const [series, learners, courses, books, catalogue] = await Promise.all([
+      daily(range, bucket),
+      activeLearners(range),
+      courseStats(),
+      bookStats(),
+      getAllCourses(),
+    ]);
+    const withLectures = catalogue.filter((c) => courses[c.id].lectures > 0);
     const funnelCourse =
       withLectures.find((c) => c.id === courseParam) ?? withLectures.find((c) => c.id === LECTURE_COURSE_ID) ?? withLectures[0];
     const funnel = funnelCourse ? await lectureFunnel(funnelCourse.id) : [];
-    data = { series, learners, courses, books, withLectures, funnelCourse, funnel };
+    data = { series, learners, courses, books, catalogue, withLectures, funnelCourse, funnel };
   } catch (error) {
     return <LoadError error={error} />;
   }
-  const { series, learners, courses, books, withLectures, funnelCourse, funnel } = data;
+  const { series, learners, courses, books, catalogue, withLectures, funnelCourse, funnel } = data;
 
   // Links keep the current range, search and course; each control changes only its own part.
   const rangeParams = preset ? { range: preset } : { from: range.from, to: range.to };
@@ -109,7 +115,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
   const needle = q.toLowerCase();
   const matches = (...fields: string[]) => !needle || fields.some((f) => f.toLowerCase().includes(needle));
-  const courseRows = COURSES.filter((c) => matches(c.title, c.category, c.id))
+  const courseRows = catalogue.filter((c) => matches(c.title, c.category, c.id))
     .map((c) => ({ course: c, ...courses[c.id] }))
     .sort((a, b) => b.revenue - a.revenue || b.learners - a.learners || b.owners - a.owners);
   const bookRows = BOOKS.filter((b) => matches(b.title, b.subtitle, b.category, b.id))

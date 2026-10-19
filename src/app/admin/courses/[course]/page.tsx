@@ -7,6 +7,7 @@ import { LoadError } from "@/components/admin/admin-parts";
 import {
   AdminHeading,
   BUTTON,
+  BUTTON_DANGER,
   BUTTON_QUIET,
   Badge,
   Card,
@@ -23,9 +24,11 @@ import {
 } from "@/components/admin/admin-ui";
 import { PagedList, PagedTable } from "@/components/admin/paged";
 import { requireAdmin } from "@/lib/admin";
-import { createLecture, moveLecture } from "@/lib/admin-actions";
+import { CourseForm } from "@/components/admin/course-form";
+import { createLecture, deleteCourse, moveLecture, updateCourse } from "@/lib/admin-actions";
 import { courseLearners, courseStats, lectureFunnel } from "@/lib/admin-data";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses, getCourse } from "@/lib/course-store";
+import { categoriesOf } from "@/lib/courses";
 import { listLectureRecords, thumbnailUrl } from "@/lib/lecture-store";
 import { clockTime } from "@/lib/lectures";
 
@@ -36,7 +39,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { course } = await params;
-  return { title: COURSES.find((c) => c.id === course)?.title ?? "Course" };
+  return { title: (await getCourse(course))?.title ?? "Course" };
 }
 
 const ARROW = "grid size-8 place-items-center rounded-full text-white/60 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30";
@@ -46,8 +49,9 @@ export default async function AdminCourse({ params, searchParams }: Props) {
   const { course: courseId } = await params;
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
-  const course = COURSES.find((c) => c.id === courseId);
+  const course = await getCourse(courseId);
   if (!course) notFound();
+  const categories = categoriesOf(await getAllCourses()).filter((c) => c !== "All");
 
   let data;
   try {
@@ -74,7 +78,7 @@ export default async function AdminCourse({ params, searchParams }: Props) {
       <div className="mt-3">
         <AdminHeading
           title={course.title}
-          intro={`${course.category} · ${course.level} · ${course.price}`}
+          intro={`${course.category} · ${course.level} · ${course.price}${course.published ? "" : " · Hidden from the catalogue"}`}
           actions={
             <Link href={`/browse/watch/${course.id}`} className={BUTTON_QUIET}>
               View as member
@@ -169,6 +173,26 @@ export default async function AdminCourse({ params, searchParams }: Props) {
             </Submit>
           </ActionForm>
         </Card>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <Card title="Course details" description="What members and visitors see on course cards, and what checkout charges.">
+          <CourseForm action={updateCourse} course={course} categories={categories} />
+        </Card>
+        <div className="space-y-6">
+          <Card title="Hide or delete">
+            <p className="text-[13.5px] leading-relaxed text-white/55">
+              To take a course off the site, untick <strong className="text-white/80">Show in the catalogue</strong> and save. Owners keep access.
+              Deleting is only possible for a course nobody has bought and that has no lectures.
+            </p>
+            <ActionForm action={deleteCourse} confirm={`Delete "${course.title}"? This can't be undone.`} className="mt-4 space-y-2">
+              <input type="hidden" name="id" value={course.id} />
+              <Submit className={BUTTON_DANGER} pending="Deleting…">
+                Delete course
+              </Submit>
+            </ActionForm>
+          </Card>
+        </div>
       </div>
 
       <div className="mt-6">

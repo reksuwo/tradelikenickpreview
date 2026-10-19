@@ -7,7 +7,7 @@ import { AdminHeading, Badge, Card, Empty, SearchBox, ago, date } from "@/compon
 import { requireAdmin } from "@/lib/admin";
 import { listMembers, listOrders, searchLectures, sentNotifications } from "@/lib/admin-data";
 import { BOOKS } from "@/lib/books";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -51,20 +51,21 @@ export default async function AdminSearch({ searchParams }: Props) {
 
   let results;
   try {
-    const [members, orders, lectures, notifications] = await Promise.all([
+    const [members, orders, lectures, notifications, catalogue] = await Promise.all([
       listMembers({ q }),
       listOrders({ q }),
       searchLectures(q, 10),
       sentNotifications({ q }),
+      getAllCourses(),
     ]);
-    results = { members, orders, lectures, notifications };
+    results = { members, orders, lectures, notifications, catalogue };
   } catch (error) {
     return <LoadError error={error} />;
   }
-  const { members, orders, lectures, notifications } = results;
+  const { members, orders, lectures, notifications, catalogue } = results;
 
   const needle = q.toLowerCase();
-  const courses = COURSES.filter((c) => [c.title, c.category, c.id].some((f) => f.toLowerCase().includes(needle)));
+  const courses = catalogue.filter((c) => [c.title, c.category, c.id].some((f) => f.toLowerCase().includes(needle)));
   const books = BOOKS.filter((b) => [b.title, b.subtitle, b.id].some((f) => f.toLowerCase().includes(needle)));
   const query = `?q=${encodeURIComponent(q)}`;
 
@@ -132,7 +133,7 @@ export default async function AdminSearch({ searchParams }: Props) {
                     {l.position}. {l.title}
                   </span>
                   <span className="text-[12.5px] text-white/45">
-                    Lecture · {COURSES.find((c) => c.id === l.courseId)?.title ?? l.courseId}
+                    Lecture · {catalogue.find((c) => c.id === l.courseId)?.title ?? l.courseId}
                   </span>
                 </span>
                 {l.published ? null : <Badge tone="warn">Draft</Badge>}

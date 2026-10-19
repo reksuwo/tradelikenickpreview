@@ -1,12 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type ReactNode } from "react";
 import type { ActionState } from "@/lib/admin-actions";
+
+/** Whether the surrounding ActionForm is waiting on its action. */
+const Pending = createContext(false);
 
 /**
  * Runs an admin Server Action and shows its result beside the form. Pass
  * `confirm` for anything destructive; the browser asks before it's sent.
+ *
+ * Submitting through onSubmit rather than <form action> stops React from
+ * clearing the fields, so a rejected save keeps what was typed.
  */
 export function ActionForm({
   action,
@@ -23,7 +28,7 @@ export function ActionForm({
   noticeClassName?: string;
   children: ReactNode;
 }) {
-  const [state, formAction] = useActionState(action, undefined);
+  const [state, formAction, pending] = useActionState(action, undefined);
   const form = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -33,13 +38,15 @@ export function ActionForm({
   return (
     <form
       ref={form}
-      action={formAction}
       onSubmit={(e) => {
-        if (confirm && !window.confirm(confirm)) e.preventDefault();
+        e.preventDefault();
+        if (pending || (confirm && !window.confirm(confirm))) return;
+        const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
+        startTransition(() => formAction(data));
       }}
       className={className}
     >
-      {children}
+      <Pending.Provider value={pending}>{children}</Pending.Provider>
       {state?.error || state?.message ? (
         <p
           role={state.error ? "alert" : "status"}
@@ -66,7 +73,7 @@ export function Submit({
   name?: string;
   value?: string;
 }) {
-  const { pending } = useFormStatus();
+  const pending = useContext(Pending);
   return (
     <button type="submit" name={name} value={value} disabled={pending} className={className}>
       {pending && pendingLabel ? pendingLabel : children}

@@ -14,7 +14,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
  * says which item; the price comes from the catalogue here on the server.
  */
 export async function startCheckout(ref: unknown): Promise<CheckoutStart> {
-  const product = findProduct(ref);
+  const product = await findProduct(ref);
   if (!product) return { error: "This item isn't available to buy." };
 
   const user = await getUser();

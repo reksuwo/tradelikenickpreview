@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type Stripe from "stripe";
-import { COURSES } from "./courses";
+import { getAllCourses } from "./course-store";
 import { db } from "./db";
 import { notify } from "./notifications";
 import type { ProductRef } from "./products";
@@ -86,7 +86,7 @@ export type Library = { courses: string[]; books: string[] };
  * "Included". Cached per request so a layout and its page can both ask.
  */
 export const getLibrary = cache(async (): Promise<Library> => {
-  const courses = new Set(COURSES.filter((c) => c.price === "Included").map((c) => c.id));
+  const courses = new Set((await getAllCourses()).filter((c) => c.priceCents == null).map((c) => c.id));
   const books = new Set<string>();
 
   const user = await getUser();

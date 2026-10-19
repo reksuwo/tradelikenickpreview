@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
 import { getOrder } from "@/lib/admin-data";
 import { BOOKS } from "@/lib/books";
-import { COURSES } from "@/lib/courses";
+import { getCourse } from "@/lib/course-store";
 import { db } from "@/lib/db";
 import { getLectureRecord } from "@/lib/lecture-store";
 import { announce, notify, type NotificationKind } from "@/lib/notifications";
@@ -44,7 +44,7 @@ export async function grantAccess(_prev: ActionState, formData: FormData): Promi
 
   const userId = field(formData, "userId");
   const [type, id] = field(formData, "product").split(":");
-  const item = type === "course" ? COURSES.find((c) => c.id === id) : type === "book" ? BOOKS.find((b) => b.id === id) : null;
+  const item = type === "course" ? await getCourse(id) : type === "book" ? BOOKS.find((b) => b.id === id) : null;
   if (!UUID.test(userId) || !item) return { error: "Pick a course or book to give." };
 
   try {
@@ -203,7 +203,7 @@ export async function createLecture(_prev: ActionState, formData: FormData): Pro
   if (!(await getAdmin())) return DENIED;
   const courseId = field(formData, "courseId");
   const title = field(formData, "title");
-  if (!COURSES.some((c) => c.id === courseId)) return { error: "That course doesn't exist." };
+  if (!(await getCourse(courseId))) return { error: "That course doesn't exist." };
   if (title.length < 2) return { error: "Give the lecture a title." };
 
   let id: string;
@@ -251,7 +251,7 @@ export async function updateLecture(_prev: ActionState, formData: FormData): Pro
       where id = ${lecture.id}
     `;
     if (published && !lecture.published && notifyMembers) {
-      const course = COURSES.find((c) => c.id === lecture.courseId);
+      const course = await getCourse(lecture.courseId);
       await announce({
         kind: "course",
         title: `New lecture: ${title}`,
@@ -412,4 +412,169 @@ export async function cancelUpload(input: { key: string; uploadId: string }) {
   if (!(await getAdmin())) return;
   if (!/^(Lectures|Thumbnails)\//.test(input.key)) return;
   await abortMultipartUpload(input.key, input.uploadId).catch((e) => console.error("admin: abort upload failed", e));
+}
+
+// ─── Courses ──────────────────────────────────────────────────────────
+
+/** Courses appear on nearly every page, marketing ones included, so a change refreshes them all. */
+function revalidateCatalogue() {
+  revalidatePath("/", "layout");
+}
+
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "");
+}
+
+/** "697", "$24.50" → cents. Null when it isn't a price. */
+function parsePrice(value: string) {
+  const match = /^\$?\s*(\d{1,6})(?:\.(\d{1,2}))?$/.exec(value.replace(/,/g, ""));
+  return match ? Number(match[1]) * 100 + Number((match[2] ?? "0").padEnd(2, "0")) : null;
+}
+
+/** The editable fields of the course form, checked. */
+function readCourse(formData: FormData) {
+  const title = field(formData, "title");
+  const category = field(formData, "category");
+  const level = field(formData, "level") || "All levels";
+  const hours = field(formData, "hours");
+  const lessons = field(formData, "lessons");
+  const blurb = field(formData, "blurb");
+  const badge = field(formData, "badge");
+  const rating = field(formData, "rating");
+  const poster = Number(field(formData, "poster"));
+  const included = formData.get("included") === "on";
+  const priceCents = included ? null : parsePrice(field(formData, "price"));
+  const published = formData.get("published") === "on";
+
+  if (title.length < 2 || title.length > 120) return { error: "Give the course a title of 2 to 120 characters." };
+  if (!category || category.length > 40) return { error: "Give it a category, like Foundations or Risk." };
+  if (blurb.length > 600) return { error: "Keep the description under 600 characters." };
+  if (badge.length > 30) return { error: "Keep the badge short, under 30 characters." };
+  if (rating && !/^[0-5](\.\d)?$/.test(rating)) return { error: "Write the rating like 4.8, or leave it empty." };
+  if (!Number.isInteger(poster) || poster < 0 || poster > 8) return { error: "Pick a poster." };
+  if (!included && (priceCents === null || priceCents < 50)) {
+    return { error: "Enter a price of at least $0.50, like 149 or 24.50, or tick Included." };
+  }
+
+  return {
+    values: {
+      title,
+      category,
+      level,
+      hours,
+      lessons,
+      blurb,
+      badge: badge || null,
+      rating,
+      poster,
+      price_cents: priceCents,
+      published,
+    },
+  };
+}
+
+export async function createCourse(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await getAdmin())) return DENIED;
+  const course = readCourse(formData);
+  if ("error" in course) return { error: course.error };
+
+  const id = field(formData, "id") || slugify(course.values.title);
+  if (id === "new") return { error: "That web address is reserved. Choose another." };
+  if (!SLUG.test(id) || id.length > 60) {
+    return { error: "The web address can only use lowercase letters, numbers and single dashes, like position-sizing." };
+  }
+
+  try {
+    if (await getCourse(id)) return { error: `A course already uses the address ${id}. Choose another.` };
+    const [{ next }] = await db<{ next: number }[]>`select coalesce(max(position), 0)::int + 1 as next from public.courses`;
+    await db`insert into public.courses ${db({ id, ...course.values, position: next })}`;
+  } catch (error) {
+    return failed("create the course", error);
+  }
+  revalidateCatalogue();
+  redirect(`/admin/courses/${id}`);
+}
+
+export async function updateCourse(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await getAdmin())) return DENIED;
+  const existing = await getCourse(field(formData, "id"));
+  if (!existing) return { error: "That course doesn't exist." };
+  const course = readCourse(formData);
+  if ("error" in course) return { error: course.error };
+
+  try {
+    await db`update public.courses set ${db(course.values)}, updated_at = now() where id = ${existing.id}`;
+  } catch (error) {
+    return failed("save the course", error);
+  }
+  revalidateCatalogue();
+  const priceChanged = (course.values.price_cents ?? null) !== existing.priceCents;
+  return { message: priceChanged ? "Saved. New checkouts use the new price." : "Saved." };
+}
+
+/** Keeps course positions 1, 2, 3… in their current order. */
+async function renumberCourses() {
+  await db`
+    update public.courses c set position = r.n
+    from (select id, row_number() over (order by position, created_at) as n from public.courses) r
+    where c.id = r.id and c.position <> r.n
+  `;
+}
+
+export async function moveCourse(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await getAdmin())) return DENIED;
+  const id = field(formData, "id");
+  const up = field(formData, "direction") === "up";
+
+  try {
+    await renumberCourses();
+    const [self] = await db<{ position: number }[]>`select position from public.courses where id = ${id}`;
+    if (!self) return { error: "That course doesn't exist." };
+    const [other] = await db<{ id: string; position: number }[]>`
+      select id, position from public.courses where position = ${self.position + (up ? -1 : 1)}
+    `;
+    if (other) {
+      await db.begin((tx) => [
+        tx`update public.courses set position = ${other.position} where id = ${id}`,
+        tx`update public.courses set position = ${self.position} where id = ${other.id}`,
+      ]);
+    }
+  } catch (error) {
+    return failed("move the course", error);
+  }
+  revalidateCatalogue();
+  return undefined;
+}
+
+/**
+ * Deletes a course nobody has bought and that has no lectures. Anything with
+ * history is hidden instead, so owners keep what they paid for.
+ */
+export async function deleteCourse(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await getAdmin())) return DENIED;
+  const course = await getCourse(field(formData, "id"));
+  if (!course) return { error: "That course doesn't exist." };
+
+  try {
+    const [{ orders, lectures }] = await db<{ orders: number; lectures: number }[]>`
+      select (select count(*)::int from public.purchases where product_type = 'course' and product_id = ${course.id}) as orders,
+             (select count(*)::int from public.lectures where course_id = ${course.id}) as lectures
+    `;
+    if (orders) return { error: "Members have bought this course, so it can't be deleted. Hide it instead." };
+    if (lectures) return { error: "Delete this course's lectures first, or hide the course instead." };
+    await db`delete from public.courses where id = ${course.id}`;
+    await renumberCourses();
+  } catch (error) {
+    return failed("delete the course", error);
+  }
+  revalidateCatalogue();
+  redirect("/admin/courses");
 }

@@ -1,3 +1,8 @@
+/**
+ * A course in the catalogue. The live catalogue is the `courses` table, edited
+ * in the admin panel and read through lib/course-store.ts; the list below is
+ * what it started with, and what pages fall back to if the database is down.
+ */
 export type Course = {
   id: string;
   title: string;
@@ -5,12 +10,34 @@ export type Course = {
   level: string;
   hours: string;
   lessons: string;
+  /** "$697", or "Included" for courses every member gets. */
   price: string;
   blurb: string;
   poster: number;
   badge?: string;
   rating: string;
+  /** False when hidden from the catalogue. Owners can still watch it. */
+  published?: boolean;
 };
+
+/** How many poster artworks components/poster.tsx draws. */
+export const POSTER_VARIANTS = 9;
+
+/** 69700 → "$697", 2450 → "$24.50", null → "Included". */
+export function formatPrice(cents: number | null) {
+  if (cents == null) return "Included";
+  return cents % 100 ? `$${(cents / 100).toFixed(2)}` : `$${cents / 100}`;
+}
+
+/** "All" plus each category in catalogue order, for the filter chips. */
+export function categoriesOf(courses: Course[]) {
+  return ["All", ...new Set(courses.map((c) => c.category))];
+}
+
+/** The courses with these ids, in this order, skipping any that no longer exist. */
+export function pick(courses: Course[], ids: string[]) {
+  return ids.flatMap((id) => courses.find((c) => c.id === id) ?? []);
+}
 
 export const COURSES: Course[] = [
   {

@@ -28,7 +28,7 @@ import { requireAdmin } from "@/lib/admin";
 import { grantAccess, refundOrder, revokeGrant, sendNotification } from "@/lib/admin-actions";
 import { getMemberRow, memberOrders, memberProgress } from "@/lib/admin-data";
 import { BOOKS } from "@/lib/books";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
 
 export const metadata: Metadata = { title: "Member" };
 
@@ -42,13 +42,13 @@ export default async function AdminMember({ params }: Props) {
   try {
     const member = await getMemberRow(id);
     if (!member) notFound();
-    const [orders, progress] = await Promise.all([memberOrders(member.id), memberProgress(member.id)]);
-    data = { member, orders, progress };
+    const [orders, progress, courses] = await Promise.all([memberOrders(member.id), memberProgress(member.id), getAllCourses()]);
+    data = { member, orders, progress, courses };
   } catch (error) {
     unstable_rethrow(error);
     return <LoadError error={error} />;
   }
-  const { member, orders, progress } = data;
+  const { member, orders, progress, courses } = data;
 
   const owned = new Set(orders.filter((o) => !o.refundedAt).map((o) => `${o.productType}:${o.productId}`));
   const watched = progress.reduce((t, p) => t + p.watchedSeconds, 0);
@@ -97,7 +97,7 @@ export default async function AdminMember({ params }: Props) {
                 <tr key={p.courseId}>
                   <td className={TD}>
                     <Link href={`/admin/courses/${p.courseId}`} className="font-semibold text-white hover:underline">
-                      {COURSES.find((c) => c.id === p.courseId)?.title ?? p.courseId}
+                      {courses.find((c) => c.id === p.courseId)?.title ?? p.courseId}
                     </Link>
                   </td>
                   <td className={TD}>
@@ -164,7 +164,7 @@ export default async function AdminMember({ params }: Props) {
                   Choose a course or book…
                 </option>
                 <optgroup label="Courses">
-                  {COURSES.filter((c) => c.price !== "Included").map((c) => (
+                  {courses.filter((c) => c.priceCents != null).map((c) => (
                     <option key={c.id} value={`course:${c.id}`} disabled={owned.has(`course:${c.id}`)}>
                       {c.title}
                       {owned.has(`course:${c.id}`) ? " (owned)" : ""}

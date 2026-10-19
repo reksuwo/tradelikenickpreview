@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LoadError } from "@/components/admin/admin-parts";
-import { AdminHeading, Badge, Card, Empty, Meter, SearchBox, TD, TH, money, watchTime } from "@/components/admin/admin-ui";
+import { ActionForm } from "@/components/admin/action-form";
+import { AdminHeading, BUTTON, Badge, Card, Empty, Meter, SearchBox, TD, TH, money, watchTime } from "@/components/admin/admin-ui";
 import { PagedTable } from "@/components/admin/paged";
 import { requireAdmin } from "@/lib/admin";
+import { moveCourse } from "@/lib/admin-actions";
 import { courseStats, searchLectures } from "@/lib/admin-data";
-import { COURSES } from "@/lib/courses";
+import { getAllCourses } from "@/lib/course-store";
+
+const ARROW =
+  "grid size-7 place-items-center rounded-full text-[13px] text-white/60 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25";
 
 export const metadata: Metadata = { title: "Courses" };
 
@@ -16,9 +21,9 @@ export default async function AdminCourses({ searchParams }: Props) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
 
-  let stats, lectureHits;
+  let all, stats, lectureHits;
   try {
-    [stats, lectureHits] = await Promise.all([courseStats(), q ? searchLectures(q) : []]);
+    [all, stats, lectureHits] = await Promise.all([getAllCourses(), courseStats(), q ? searchLectures(q) : []]);
   } catch (error) {
     return <LoadError error={error} />;
   }
@@ -26,7 +31,7 @@ export default async function AdminCourses({ searchParams }: Props) {
   // A course matches on its own title or category, or on one of its lectures.
   const needle = q.toLowerCase();
   const hitsByCourse = Object.groupBy(lectureHits, (l) => l.courseId);
-  const courses = COURSES.filter(
+  const courses = all.filter(
     (c) => !needle || [c.title, c.category, c.id].some((f) => f.toLowerCase().includes(needle)) || hitsByCourse[c.id],
   );
 
@@ -34,7 +39,12 @@ export default async function AdminCourses({ searchParams }: Props) {
     <>
       <AdminHeading
         title="Courses"
-        intro="Upload and arrange each course's lectures, and see who's watching. Titles, prices and descriptions are set in src/lib/courses.ts."
+        intro="Create courses, set prices, and upload each course's lectures. The order here is the order on the site."
+        actions={
+          <Link href="/admin/courses/new" className={BUTTON}>
+            New course
+          </Link>
+        }
       />
 
       <div className="mb-4">
@@ -46,6 +56,9 @@ export default async function AdminCourses({ searchParams }: Props) {
           key={q}
           head={
             <tr>
+              <th className={`${TH} w-[52px]`}>
+                <span className="sr-only">Order</span>
+              </th>
               <th className={TH}>Course</th>
               <th className={TH}>Lectures</th>
               <th className={`${TH} text-right`}>Owners</th>
@@ -58,12 +71,37 @@ export default async function AdminCourses({ searchParams }: Props) {
           rows={courses.map((c) => {
             const s = stats[c.id];
             const hits = hitsByCourse[c.id] ?? [];
+            const i = all.indexOf(c);
             return (
               <tr key={c.id} className="transition-colors hover:bg-white/[0.02]">
                 <td className={TD}>
-                  <Link href={`/admin/courses/${c.id}`} className="font-semibold text-white hover:underline">
-                    {c.title}
-                  </Link>
+                  {/* Reordering only makes sense on the full list. */}
+                  {q ? null : (
+                    <span className="flex flex-col gap-1">
+                      <ActionForm action={moveCourse}>
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="direction" value="up" />
+                        <button type="submit" disabled={i === 0} aria-label={`Move ${c.title} up`} className={ARROW}>
+                          ↑
+                        </button>
+                      </ActionForm>
+                      <ActionForm action={moveCourse}>
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="direction" value="down" />
+                        <button type="submit" disabled={i === all.length - 1} aria-label={`Move ${c.title} down`} className={ARROW}>
+                          ↓
+                        </button>
+                      </ActionForm>
+                    </span>
+                  )}
+                </td>
+                <td className={TD}>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Link href={`/admin/courses/${c.id}`} className="font-semibold text-white hover:underline">
+                      {c.title}
+                    </Link>
+                    {c.published ? null : <Badge tone="warn">Hidden</Badge>}
+                  </span>
                   <span className="block text-[12.5px] text-white/45">
                     {c.category} · {c.price}
                   </span>
@@ -99,7 +137,7 @@ export default async function AdminCourses({ searchParams }: Props) {
               </tr>
             );
           })}
-          empty={<Empty>No courses or lectures match “{q}”.</Empty>}
+          empty={<Empty>{q ? `No courses or lectures match “${q}”.` : "No courses yet. Create the first one."}</Empty>}
         />
       </Card>
     </>

@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Arrow, Container, CTA, PlayIcon, Section, Star, type Tone } from "./ui";
 import { Poster } from "./poster";
-import { CATEGORIES, COURSES, byId, type Course } from "@/lib/courses";
-import { clockTime, LECTURES, type Lecture } from "@/lib/lectures";
+import { categoriesOf, type Course } from "@/lib/courses";
+import { clockTime, LECTURE_COURSE_ID, LECTURES, type Lecture } from "@/lib/lectures";
 
 function LockBadge() {
   return (
@@ -39,9 +39,7 @@ function HoverPlay() {
   );
 }
 
-function LectureCard({ lecture }: { lecture: Lecture }) {
-  const flagship = byId("complete-system");
-
+function LectureCard({ lecture, flagship }: { lecture: Lecture; flagship?: Course }) {
   return (
     <article className="group">
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-edge bg-art-dark transition-all duration-200 group-hover:border-accent group-hover:shadow-card">
@@ -72,14 +70,14 @@ function LectureCard({ lecture }: { lecture: Lecture }) {
         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-faint">
           <span className="text-accent-ink">Lecture {lecture.n}</span>
           <span className="size-1 rounded-full bg-edge" />
-          <span className="truncate">{flagship.category}</span>
+          <span className="truncate">{flagship?.category}</span>
         </div>
         <h4 className="mt-1.5 text-[15.5px] font-bold leading-snug text-fg">
           <Link href="/signin" className="transition-opacity hover:opacity-70">
             {lecture.title}
           </Link>
         </h4>
-        <p className="mt-2 truncate text-[12.5px] text-muted">{flagship.title}</p>
+        <p className="mt-2 truncate text-[12.5px] text-muted">{flagship?.title}</p>
       </div>
     </article>
   );
@@ -132,17 +130,21 @@ function CourseCard({ course }: { course: Course }) {
 
 const HOME_LIMIT = 4;
 
-export function Library({ tone }: { tone: Tone }) {
+const COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+
+export function Library({ tone, courses: catalogue }: { tone: Tone; courses: Course[] }) {
   const [active, setActive] = useState("All");
   const all = active === "All";
-  const courses = COURSES.filter((c) => c.category === active).slice(0, HOME_LIMIT);
+  const courses = catalogue.filter((c) => c.category === active).slice(0, HOME_LIMIT);
+  const flagship = catalogue.find((c) => c.id === LECTURE_COURSE_ID);
+  const count = COUNT_WORDS[catalogue.length] ?? String(catalogue.length);
 
   return (
     <Section id="library" tone={tone} className="py-20 lg:py-28">
       <Container>
         <div className="max-w-2xl">
           <h2 className="text-[clamp(2rem,4.2vw,3.1rem)] font-extrabold leading-[1.04] text-fg">
-            Nine courses. One shelf. Watch in any order.
+            {count} {catalogue.length === 1 ? "course" : "courses"}. One shelf. Watch in any order.
           </h2>
           <p className="mt-5 text-[16.5px] leading-relaxed text-muted">
             Browse everything without an account. Sign in to watch the opening episodes free, and
@@ -151,7 +153,7 @@ export function Library({ tone }: { tone: Tone }) {
         </div>
 
         <div className="no-scrollbar mt-9 flex gap-2 overflow-x-auto pb-1">
-          {CATEGORIES.map((c) => (
+          {categoriesOf(catalogue).map((c) => (
             <button
               key={c}
               type="button"
@@ -182,7 +184,7 @@ export function Library({ tone }: { tone: Tone }) {
         {all ? (
           <div className="mt-5 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
             {LECTURES.map((l) => (
-              <LectureCard key={l.n} lecture={l} />
+              <LectureCard key={l.n} lecture={l} flagship={flagship} />
             ))}
           </div>
         ) : (

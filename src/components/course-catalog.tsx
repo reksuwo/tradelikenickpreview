@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Arrow, Container, PlayIcon, Section, Star, type Tone } from "./ui";
 import { Poster } from "./poster";
 import { CheckoutModal, courseCheckoutItem, type CheckoutItem } from "./checkout-modal";
-import { CATEGORIES, COURSES, type Course } from "@/lib/courses";
+import { categoriesOf, type Course } from "@/lib/courses";
 
 function LockIcon({ className = "" }: { className?: string }) {
   return (
@@ -138,11 +138,11 @@ function CatalogCard({
  * Pass `owned` on member pages (course ids from getLibrary): "Start watching"
  * then opens the player. Visitors, with no `owned`, are sent to sign in.
  */
-export function CourseCatalog({ tone, owned }: { tone: Tone; owned?: string[] }) {
+export function CourseCatalog({ tone, courses, owned }: { tone: Tone; courses: Course[]; owned?: string[] }) {
   const [active, setActive] = useState("All");
   const [buying, setBuying] = useState<CheckoutItem | null>(null);
   const shown =
-    active === "All" ? COURSES : COURSES.filter((c) => c.category === active);
+    active === "All" ? courses : courses.filter((c) => c.category === active);
 
   return (
     <Section id="all-courses" tone={tone} className="py-20 lg:py-24">
@@ -159,7 +159,7 @@ export function CourseCatalog({ tone, owned }: { tone: Tone; owned?: string[] })
           </div>
 
           <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-            {CATEGORIES.map((c) => (
+            {categoriesOf(courses).map((c) => (
               <button
                 key={c}
                 type="button"

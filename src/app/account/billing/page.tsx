@@ -3,6 +3,7 @@ import Link from "next/link";
 import { iconFor } from "@/components/account/account-links";
 import { EmptyState, PageHeading, Panel } from "@/components/account/account-ui";
 import { ActionForm, Submit } from "@/components/admin/action-form";
+import { Pagination, SearchBox } from "@/components/admin/admin-ui";
 import { LEGAL_EMAIL } from "@/lib/legal";
 import { listPurchases, recordPurchase, refundDeadline, REFUND_DAYS, selfRefundCheck } from "@/lib/purchases";
 import { requestRefund } from "@/lib/refund-actions";
@@ -56,6 +57,8 @@ function formatMoney(cents: number, currency: string) {
 
 const shortDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+const PAGE_SIZE = 10;
+
 export default async function BillingPage({
   searchParams,
 }: {
@@ -64,9 +67,24 @@ export default async function BillingPage({
   const user = await getUser();
   if (!user) return null; // The account layout already sends signed-out visitors to sign in.
 
-  const { session_id } = await searchParams;
+  const { session_id, q: rawQuery, page: rawPage } = await searchParams;
   const notice = typeof session_id === "string" ? await confirmCheckout(session_id, user.id) : null;
   const purchases = await listPurchases(user.id);
+
+  // Search and page in memory: one member's orders are few, and the refund
+  // rules below need all of them anyway.
+  const q = typeof rawQuery === "string" ? rawQuery.trim() : "";
+  const term = q.toLowerCase();
+  const matches = term
+    ? purchases.filter((p) =>
+        `${p.title} ${p.productType === "course" ? "course" : "trading book"}`.toLowerCase().includes(term),
+      )
+    : purchases;
+  const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(typeof rawPage === "string" ? rawPage : "", 10) || 1));
+  const shown = matches.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Links keep the search but drop session_id, so the payment notice doesn't come back.
+  const params = { q: q || undefined };
 
   return (
     <>
@@ -98,8 +116,21 @@ export default async function BillingPage({
             title="Orders"
             description={`Receipts are emailed by Stripe when you pay. Changed your mind? Refund any order within ${REFUND_DAYS} days.`}
           >
+            <div className="mb-5">
+              <SearchBox base="/account/billing" params={params} placeholder="Search your orders" />
+            </div>
+
+            {shown.length ? null : (
+              <p className="py-6 text-center text-[14px] text-white/50">
+                No orders match &ldquo;{q}&rdquo;.{" "}
+                <Link href="/account/billing" className="font-semibold text-white/75 hover:underline">
+                  Show all orders
+                </Link>
+              </p>
+            )}
+
             <ul className="divide-y divide-white/10">
-              {purchases.map((p) => {
+              {shown.map((p) => {
                 const refund = selfRefundCheck(p, purchases);
                 // Inside the window but past the self-serve limits: point them to a person.
                 const askSupport =
@@ -137,7 +168,7 @@ export default async function BillingPage({
                         <span className="text-[12.5px] text-white/45">Refundable until {shortDate(refundDeadline(p))}</span>
                         <Submit
                           pending="Refunding…"
-                          className="rounded-full border border-white/20 px-3 py-1 text-[12.5px] font-semibold text-white/80 transition-colors hover:border-white/50 hover:text-white disabled:opacity-50"
+                          className="rounded-full px-3 py-1 text-[12.5px] font-semibold text-[#ff9384] ring-1 ring-[#ff6b5a]/50 transition-colors hover:bg-[#ff6b5a]/15 hover:text-[#ffb3a8] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Refund
                         </Submit>
@@ -155,6 +186,13 @@ export default async function BillingPage({
                 );
               })}
             </ul>
+
+            {matches.length > PAGE_SIZE ? (
+              // Pagination brings its own side padding; pull it out to the panel's edge so it lines up.
+              <div className="-mx-5 -mb-5 mt-3 border-t border-white/10 sm:-mx-6 sm:-mb-7">
+                <Pagination base="/account/billing" params={params} page={page} total={matches.length} pageSize={PAGE_SIZE} />
+              </div>
+            ) : null}
           </Panel>
         ) : (
           <EmptyState

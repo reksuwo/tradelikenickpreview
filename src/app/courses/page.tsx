@@ -5,7 +5,7 @@ import { CourseCatalog } from "@/components/course-catalog";
 import { Curriculum } from "@/components/curriculum";
 import { FinalCta } from "@/components/final-cta";
 import { Arrow, Container, CTA, Highlight, Section } from "@/components/ui";
-import { COURSES } from "@/lib/courses";
+import { getCourses } from "@/lib/course-store";
 
 export const metadata: Metadata = {
   title: "Courses — TradeLikeNick",
@@ -13,15 +13,15 @@ export const metadata: Metadata = {
     "Every TradeLikeNick course in one place: options, probability, risk management and disciplined strategies, from beginner to advanced.",
 };
 
-const totalLessons = COURSES.reduce((sum, c) => sum + (parseInt(c.lessons, 10) || 0), 0);
+export default async function CoursesPage() {
+  const courses = await getCourses();
+  const totalLessons = courses.reduce((sum, c) => sum + (parseInt(c.lessons, 10) || 0), 0);
+  const summary = [
+    { value: String(courses.length), label: "Courses" },
+    { value: `${totalLessons}+`, label: "Lessons" },
+    { value: "Free", label: "First two episodes" },
+  ];
 
-const SUMMARY = [
-  { value: String(COURSES.length), label: "Courses" },
-  { value: `${totalLessons}+`, label: "Lessons" },
-  { value: "Free", label: "First two episodes" },
-];
-
-export default function CoursesPage() {
   return (
     <>
       <SiteHeader />
@@ -51,7 +51,7 @@ export default function CoursesPage() {
             </div>
 
             <dl className="mx-auto mt-12 grid max-w-3xl gap-4 sm:grid-cols-3">
-              {SUMMARY.map((s) => (
+              {summary.map((s) => (
                 <div key={s.label} className="rounded-2xl border border-edge bg-card px-5 py-5 shadow-card">
                   <dt className="text-[12.5px] font-semibold uppercase tracking-[0.12em] text-muted">
                     {s.label}
@@ -65,7 +65,7 @@ export default function CoursesPage() {
           </Container>
         </Section>
 
-        <CourseCatalog tone="dark" />
+        <CourseCatalog tone="dark" courses={courses} />
         <Curriculum tone="dark" />
         <FinalCta tone="light" />
       </main>

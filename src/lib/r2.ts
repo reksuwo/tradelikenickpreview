@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   S3Client,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
@@ -19,6 +20,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  *   Lectures/lecture-01.mp4          the first course videos
  *   Lectures/<course id>/<file>      videos uploaded from the admin panel
  *   Thumbnails/<file>                lecture thumbnails uploaded from the admin panel
+ *   Avatars/<user id>-<n>.<ext>      profile photos members upload
  *   Books/<book id>.pdf              one PDF per book (ids in lib/books.ts)
  */
 
@@ -122,6 +124,11 @@ export async function completeMultipartUpload(key: string, uploadId: string, par
 
 export async function abortMultipartUpload(key: string, uploadId: string) {
   await r2Write().send(new AbortMultipartUploadCommand({ Bucket: env("R2_BUCKET"), Key: key, UploadId: uploadId }));
+}
+
+/** Uploads one small file in a single request (profile photos). */
+export async function putObject(key: string, body: Uint8Array, contentType: string) {
+  await r2Write().send(new PutObjectCommand({ Bucket: env("R2_BUCKET"), Key: key, Body: body, ContentType: contentType }));
 }
 
 export async function deleteObject(key: string) {

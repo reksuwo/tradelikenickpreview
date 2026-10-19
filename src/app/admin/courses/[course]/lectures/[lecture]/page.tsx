@@ -7,7 +7,7 @@ import { BUTTON, BUTTON_DANGER, Badge, Card, INPUT, LABEL, dateTime } from "@/co
 import { LectureUploader } from "@/components/admin/lecture-uploader";
 import { requireAdmin } from "@/lib/admin";
 import { deleteLecture, updateLecture } from "@/lib/admin-actions";
-import { COURSES } from "@/lib/courses";
+import { getCourse } from "@/lib/course-store";
 import { getLectureRecord, thumbnailUrl } from "@/lib/lecture-store";
 import { clockTime } from "@/lib/lectures";
 import { objectExists, signedUrl } from "@/lib/r2";
@@ -31,7 +31,7 @@ async function preview(key: string | null) {
 export default async function EditLecture({ params }: Props) {
   await requireAdmin();
   const { course: courseId, lecture: lectureId } = await params;
-  const course = COURSES.find((c) => c.id === courseId);
+  const course = await getCourse(courseId);
   const lecture = await getLectureRecord(lectureId);
   if (!course || !lecture || lecture.courseId !== course.id) notFound();
 
