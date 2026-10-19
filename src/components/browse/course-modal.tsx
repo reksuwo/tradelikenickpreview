@@ -1,19 +1,24 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Poster } from "../poster";
 import { PlayIcon, Star } from "../ui";
 import type { Course } from "@/lib/courses";
-import { clockTime, LECTURE_COURSE_ID, LECTURES, minutes } from "@/lib/lectures";
+import { clockTime, minutes, type Lecture } from "@/lib/lectures";
 
-function Episodes() {
+function Episodes({ courseId, lectures, owned }: { courseId: string; lectures: Lecture[]; owned: boolean }) {
   return (
     <div className="border-t border-white/10 px-6 pb-8 pt-6 sm:px-10">
       <h3 className="text-[20px] font-bold">Episodes</h3>
       <ol className="mt-4 divide-y divide-white/10">
-        {LECTURES.map((l) => (
-          <li key={l.n} className="group flex items-center gap-4 py-4">
+        {lectures.map((l) => (
+          <li key={l.id ?? l.n}>
+            <Link
+              href={`/browse/watch/${courseId}?lecture=${l.n}`}
+              className="group flex items-center gap-4 py-4"
+            >
             <span className="w-5 shrink-0 text-center font-display text-[20px] font-extrabold tabnum text-white/50">
               {l.n}
             </span>
@@ -29,7 +34,7 @@ function Episodes() {
               <div className="flex items-baseline justify-between gap-3">
                 <p className="truncate text-[15px] font-bold">
                   {l.title}
-                  {l.free ? (
+                  {l.free && !owned ? (
                     <span className="ml-2 rounded bg-neon px-1.5 py-0.5 align-middle text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-ink">
                       Free
                     </span>
@@ -41,6 +46,7 @@ function Episodes() {
               </div>
               <p className="mt-1 line-clamp-2 text-[13.5px] leading-relaxed text-white/65">{l.desc}</p>
             </div>
+            </Link>
           </li>
         ))}
       </ol>
@@ -49,7 +55,19 @@ function Episodes() {
 }
 
 /** Course details dialog, opened from any card on the member pages. */
-export function CourseModal({ course, onClose }: { course: Course | null; onClose: () => void }) {
+export function CourseModal({
+  course,
+  owned,
+  lectures = [],
+  onClose,
+}: {
+  course: Course | null;
+  /** The member can watch every lesson of this course. */
+  owned: boolean;
+  /** The course's published lectures, listed as episodes. */
+  lectures?: Lecture[];
+  onClose: () => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -85,13 +103,17 @@ export function CourseModal({ course, onClose }: { course: Course | null; onClos
               <h2 className="max-w-lg text-[clamp(1.8rem,4vw,2.8rem)] font-extrabold leading-[1] text-white">
                 {course.title}
               </h2>
-              <button
-                type="button"
+              <Link
+                href={`/browse/watch/${course.id}`}
                 className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-white px-7 py-3 text-[15px] font-bold text-ink transition-colors hover:bg-white/85"
               >
                 <PlayIcon className="size-5" />
-                {course.price === "Included" ? "Play" : "Watch free preview"}
-              </button>
+                {owned
+                  ? "Play"
+                  : lectures.some((l) => l.free)
+                    ? "Watch free preview"
+                    : `Unlock for ${course.price}`}
+              </Link>
             </div>
           </div>
 
@@ -118,12 +140,12 @@ export function CourseModal({ course, onClose }: { course: Course | null; onClos
               </div>
               <div>
                 <dt className="inline text-white/50">Price: </dt>
-                <dd className="inline font-bold">{course.price}</dd>
+                <dd className="inline font-bold">{owned ? "In your library" : course.price}</dd>
               </div>
             </dl>
           </div>
 
-          {course.id === LECTURE_COURSE_ID ? <Episodes /> : null}
+          {lectures.length ? <Episodes courseId={course.id} lectures={lectures} owned={owned} /> : null}
         </div>
       ) : null}
     </dialog>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Arrow, Container, PlayIcon, Section, Star, type Tone } from "./ui";
 import { Poster } from "./poster";
-import { CheckoutModal, type CheckoutItem } from "./checkout-modal";
+import { CheckoutModal, courseCheckoutItem, type CheckoutItem } from "./checkout-modal";
 import { CATEGORIES, COURSES, type Course } from "@/lib/courses";
 
 function LockIcon({ className = "" }: { className?: string }) {
@@ -29,8 +29,19 @@ function LockIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: string; onBuy: () => void }) {
+function CatalogCard({
+  course,
+  owned,
+  watchHref,
+  onBuy,
+}: {
+  course: Course;
+  owned: boolean;
+  watchHref: string;
+  onBuy: () => void;
+}) {
   const included = course.price === "Included";
+  const canWatch = included || owned;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-[22px] border border-edge bg-card transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-card">
@@ -43,13 +54,15 @@ function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: 
           </span>
         ) : null}
 
-        <span
-          title="Purchase to unlock"
-          className="absolute bottom-3 left-3 grid size-8 place-items-center rounded-full bg-black/80 text-white backdrop-blur"
-        >
-          <LockIcon className="size-4" />
-          <span className="sr-only">Locked — purchase to unlock</span>
-        </span>
+        {canWatch ? null : (
+          <span
+            title="Purchase to unlock"
+            className="absolute bottom-3 left-3 grid size-8 place-items-center rounded-full bg-black/80 text-white backdrop-blur"
+          >
+            <LockIcon className="size-4" />
+            <span className="sr-only">Locked — purchase to unlock</span>
+          </span>
+        )}
 
         <span className="absolute bottom-3 right-3 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-bold tabnum text-white backdrop-blur">
           {course.hours}
@@ -85,9 +98,9 @@ function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: 
         </div>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-edge pt-5">
-          {included ? (
+          {canWatch ? (
             <p className="font-display text-[22px] font-extrabold tabnum text-fg">
-              {course.price}
+              {owned && !included ? "Owned" : course.price}
             </p>
           ) : (
             <button
@@ -99,7 +112,7 @@ function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: 
               {course.price}
             </button>
           )}
-          {included ? (
+          {canWatch ? (
             <Link
               href={watchHref}
               className="inline-flex items-center gap-1.5 rounded-full bg-chip px-4 py-2.5 text-[13.5px] font-semibold text-on-chip transition-opacity hover:opacity-85"
@@ -121,8 +134,11 @@ function CatalogCard({ course, watchHref, onBuy }: { course: Course; watchHref: 
   );
 }
 
-/** `watchHref` is where "Start watching" goes: sign-in for visitors, the player for members. */
-export function CourseCatalog({ tone, watchHref = "/signin" }: { tone: Tone; watchHref?: string }) {
+/**
+ * Pass `owned` on member pages (course ids from getLibrary): "Start watching"
+ * then opens the player. Visitors, with no `owned`, are sent to sign in.
+ */
+export function CourseCatalog({ tone, owned }: { tone: Tone; owned?: string[] }) {
   const [active, setActive] = useState("All");
   const [buying, setBuying] = useState<CheckoutItem | null>(null);
   const shown =
@@ -166,21 +182,9 @@ export function CourseCatalog({ tone, watchHref = "/signin" }: { tone: Tone; wat
             <CatalogCard
               key={c.id}
               course={c}
-              watchHref={watchHref}
-              onBuy={() =>
-                setBuying({
-                  ref: { type: "course", id: c.id },
-                  kind: "Course",
-                  title: c.title,
-                  detail: `${c.level} · ${c.lessons} · ${c.hours}`,
-                  price: c.price,
-                  visual: (
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
-                      <Poster variant={c.poster} label={c.category} />
-                    </div>
-                  ),
-                })
-              }
+              owned={owned?.includes(c.id) ?? false}
+              watchHref={owned ? `/browse/watch/${c.id}` : "/signin"}
+              onBuy={() => setBuying(courseCheckoutItem(c))}
             />
           ))}
         </div>

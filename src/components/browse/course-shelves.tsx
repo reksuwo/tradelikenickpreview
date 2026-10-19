@@ -9,26 +9,40 @@ import type { Lecture } from "@/lib/lectures";
 
 export type Shelf =
   | { id?: string; title: string; items: RowItem[]; ranked?: boolean }
-  /** A course's lectures; any card opens that course's details. */
+  /** A course's lectures; each card plays its lecture. */
   | { id?: string; title: string; lectures: Lecture[]; course: Course };
 
 /** An optional hero and a stack of scrolling rows, sharing one details dialog. */
 export function CourseShelves({
   featured,
   featuredArt,
+  featuredPreview,
   rows,
+  owned = [],
+  lectures = {},
 }: {
   featured?: Course;
   /** Image shown behind the hero copy when there is no trailer. */
   featuredArt?: string;
+  /** Silent clip that plays over the hero art while the pointer is on it. */
+  featuredPreview?: string;
   rows: Shelf[];
+  /** Course ids the member can watch (from getLibrary). */
+  owned?: string[];
+  /** Published lectures by course id, listed in the details dialog. */
+  lectures?: Record<string, Lecture[]>;
 }) {
   const [selected, setSelected] = useState<Course | null>(null);
 
   return (
     <>
       {featured ? (
-        <BrowseHero course={featured} art={featuredArt} onInfo={() => setSelected(featured)} />
+        <BrowseHero
+          course={featured}
+          art={featuredArt}
+          preview={featuredPreview}
+          onInfo={() => setSelected(featured)}
+        />
       ) : null}
 
       <div className={`space-y-9 ${featured ? "mt-10" : ""}`}>
@@ -38,8 +52,9 @@ export function CourseShelves({
               key={row.title}
               id={row.id}
               title={row.title}
+              courseId={row.course.id}
               lectures={row.lectures}
-              onOpen={() => setSelected(row.course)}
+              unlocked={owned.includes(row.course.id)}
             />
           ) : (
             <CourseRow
@@ -54,7 +69,12 @@ export function CourseShelves({
         )}
       </div>
 
-      <CourseModal course={selected} onClose={() => setSelected(null)} />
+      <CourseModal
+        course={selected}
+        owned={selected ? owned.includes(selected.id) : false}
+        lectures={selected ? (lectures[selected.id] ?? []) : []}
+        onClose={() => setSelected(null)}
+      />
     </>
   );
 }

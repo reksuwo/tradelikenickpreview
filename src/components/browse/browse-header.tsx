@@ -8,6 +8,8 @@ import { ACCOUNT_GROUPS, AccountIcon, SIGN_OUT_ICON } from "../account/account-l
 import { Avatar } from "../account/avatar";
 import { signOut } from "@/lib/auth-actions";
 import type { Member } from "@/lib/member";
+import type { Notification } from "@/lib/notifications";
+import { NotificationBell } from "./notification-bell";
 
 const NAV = [
   { label: "Home", href: "/browse" },
@@ -17,6 +19,8 @@ const NAV = [
   { label: "All Courses", href: "/browse/courses" },
   { label: "Books", href: "/browse/books" },
 ];
+
+const ADMIN_ICON = ["M12 3l7.5 3v5.5c0 4.6-3.2 8.1-7.5 9.5-4.3-1.4-7.5-4.9-7.5-9.5V6L12 3z", "M9 12l2 2 4-4"];
 
 const MENU_ITEM =
   "mx-1.5 flex w-[calc(100%-12px)] items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-white/80 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:bg-white/10 focus-visible:text-white";
@@ -86,6 +90,15 @@ function AccountMenu({ member }: { member: Member }) {
           </span>
         </Link>
 
+        {member.isAdmin ? (
+          <div className="border-t border-white/10 py-1.5">
+            <Link href="/admin" onClick={close} className={MENU_ITEM}>
+              <AccountIcon paths={ADMIN_ICON} className="size-[18px] text-neon" />
+              Admin panel
+            </Link>
+          </div>
+        ) : null}
+
         {ACCOUNT_GROUPS.map((group) => (
           <div key={group.title} className="border-t border-white/10 py-1.5">
             {group.links.map((link) => (
@@ -109,7 +122,7 @@ function AccountMenu({ member }: { member: Member }) {
 }
 
 /** App bar for signed-in members. Transparent over the hero, solid once you scroll. */
-export function BrowseHeader({ member }: { member: Member }) {
+export function BrowseHeader({ member, notifications = [] }: { member: Member; notifications?: Notification[] }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
 
@@ -159,24 +172,7 @@ export function BrowseHeader({ member }: { member: Member }) {
             </svg>
           </button>
 
-          <button
-            type="button"
-            aria-label="Notifications, 2 new"
-            className="relative grid size-10 place-items-center rounded-full text-white transition-colors hover:bg-white/10"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="size-[22px]">
-              <path
-                d="M6 16V11a6 6 0 1112 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 004 0"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-neon text-[10px] font-extrabold text-ink">
-              2
-            </span>
-          </button>
+          <NotificationBell initial={notifications} />
 
           <AccountMenu member={member} />
         </div>

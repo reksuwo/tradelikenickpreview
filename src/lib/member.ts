@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { isAdmin } from "@/lib/admin";
 import { getUser } from "@/lib/supabase/server";
 
 /** What member pages and the account menu show about the signed-in user. */
@@ -12,6 +13,8 @@ export type Member = {
   avatarUrl?: string;
   /** e.g. "October 2026" */
   joined: string;
+  /** Can open the admin panel. */
+  isAdmin: boolean;
 };
 
 export function toMember(user: User): Member {
@@ -25,6 +28,7 @@ export function toMember(user: User): Member {
     email,
     avatarUrl: typeof meta.avatar_url === "string" ? meta.avatar_url : undefined,
     joined: new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    isAdmin: isAdmin(user),
   };
 }
 

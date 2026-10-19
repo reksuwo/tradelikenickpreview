@@ -1,50 +1,70 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ChartBackdrop } from "../chart-backdrop";
 import { PlayIcon } from "../ui";
 import type { Course } from "@/lib/courses";
 
-/**
- * Drop a trailer at public/hero.mp4 and it autoplays (muted) here. Until that
- * file exists, the animated chart backdrop stands in for the video.
- */
-const HERO_VIDEO = "/hero.mp4";
+const ART_MASK = "linear-gradient(to right, transparent, #000 32%)";
 
 export function BrowseHero({
   course,
   art,
+  preview,
   onInfo,
 }: {
   course: Course;
-  /** Key art behind the copy while there is no trailer; the chart backdrop otherwise. */
+  /** Key art behind the copy; the animated chart backdrop when there is none. */
   art?: string;
+  /** A short silent clip that plays over the art while a mouse is on the hero, then stops. */
+  preview?: string;
   onInfo: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<"loading" | "playing" | "failed">("loading");
-  const [muted, setMuted] = useState(true);
+  const hovering = useRef(false);
+  const [previewing, setPreviewing] = useState(false);
 
-  const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setMuted(video.muted);
+  const stopPreview = () => {
+    hovering.current = false;
+    setPreviewing(false);
+    videoRef.current?.pause();
   };
+
+  const startPreview = (e: PointerEvent) => {
+    const video = videoRef.current;
+    // Mouse only: a tap on a phone should press the button under it, not start a clip.
+    if (!video || e.pointerType !== "mouse") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    hovering.current = true;
+    video.muted = true;
+    video.currentTime = 0;
+    video.play().then(
+      // The pointer may have left while the clip was loading.
+      () => (hovering.current ? setPreviewing(true) : video.pause()),
+      () => setPreviewing(false),
+    );
+  };
+
+  // Leaving the page mid-preview stops the clip.
+  useEffect(() => {
+    const video = videoRef.current;
+    return () => video?.pause();
+  }, []);
 
   return (
     <section className="px-4 sm:px-8 lg:px-[60px]">
-      <div className="relative isolate h-[min(78vh,820px)] min-h-[520px] overflow-hidden rounded-[22px] border border-white/10 bg-[#050807]">
-        {/* Video, or the animated chart while there is none */}
-        {status !== "playing" && art ? (
+      <div
+        onPointerEnter={preview ? startPreview : undefined}
+        onPointerLeave={preview ? stopPreview : undefined}
+        className="relative isolate h-[min(78vh,820px)] min-h-[520px] overflow-hidden rounded-[22px] border border-white/10 bg-[#050807]"
+      >
+        {art ? (
           <div
             aria-hidden
             className="absolute inset-y-0 right-0 w-full lg:w-[72%]"
-            style={{
-              maskImage: "linear-gradient(to right, transparent, #000 32%)",
-              WebkitMaskImage: "linear-gradient(to right, transparent, #000 32%)",
-            }}
+            style={{ maskImage: ART_MASK, WebkitMaskImage: ART_MASK }}
           >
             <Image
               src={art}
@@ -55,53 +75,36 @@ export function BrowseHero({
               sizes="(min-width: 1024px) 72vw, 100vw"
               className="object-cover"
             />
+            {preview ? (
+              <video
+                ref={videoRef}
+                src={preview}
+                muted
+                playsInline
+                preload="metadata"
+                onEnded={stopPreview}
+                className={`absolute inset-0 size-full object-cover transition-opacity duration-500 ${
+                  previewing ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            ) : null}
           </div>
-        ) : null}
-        {status !== "playing" && !art ? <ChartBackdrop className="opacity-90" /> : null}
-        {status !== "failed" ? (
-          <video
-            ref={videoRef}
-            src={HERO_VIDEO}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onPlaying={() => setStatus("playing")}
-            onError={() => setStatus("failed")}
-            className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${
-              status === "playing" ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ) : null}
+        ) : (
+          <ChartBackdrop className="opacity-90" />
+        )}
 
         {/* Netflix-style shading so the copy always reads */}
         <div aria-hidden className="absolute inset-0 bg-linear-to-r from-black/85 via-black/35 to-transparent" />
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 to-transparent" />
 
-        {status === "playing" ? (
-          <button
-            type="button"
-            onClick={toggleMute}
-            aria-label={muted ? "Unmute trailer" : "Mute trailer"}
-            className="absolute right-5 top-5 grid size-10 place-items-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur transition-colors hover:bg-white/15 sm:right-8 sm:top-8"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="size-5">
-              <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
-              {muted ? (
-                <path d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              ) : (
-                <path
-                  d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              )}
-            </svg>
-          </button>
-        ) : null}
+        <span
+          aria-hidden
+          className={`absolute right-5 top-5 rounded-full border border-white/25 bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/80 backdrop-blur transition-opacity duration-300 sm:right-8 sm:top-8 ${
+            previewing ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          Preview
+        </span>
 
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-neon backdrop-blur">
@@ -131,14 +134,13 @@ export function BrowseHero({
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onInfo}
+              <Link
+                href={`/browse/watch/${course.id}`}
                 className="inline-flex items-center gap-2.5 rounded-full bg-white px-7 py-3.5 text-[16px] font-bold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/85"
               >
                 <PlayIcon className="size-5" />
                 Play
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={onInfo}

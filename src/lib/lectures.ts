@@ -1,5 +1,9 @@
 /**
- * The recorded lectures of The Complete Trading System, in watch order.
+ * The recorded lectures of The Complete Trading System, in watch order, as the
+ * marketing pages describe them.
+ *
+ * Member pages read lectures from the database instead (lib/lecture-store.ts),
+ * where admins add, edit and upload them. These five were its starting rows.
  *
  * `thumbnail` is served from /public. `video` is the object key in the private
  * R2 bucket; members get a short-lived signed link to it, never the key itself.
@@ -7,7 +11,12 @@
 /** The course these lectures belong to (an id in COURSES). */
 export const LECTURE_COURSE_ID = "complete-system";
 
+/** Shown for a lecture that has no thumbnail yet. */
+export const PLACEHOLDER_THUMBNAIL = "/thumbnails/placeholder.svg";
+
 export type Lecture = {
+  /** Database id; absent on the static list above. */
+  id?: string;
   n: number;
   title: string;
   desc: string;
@@ -17,6 +26,8 @@ export type Lecture = {
   video: string;
   /** Watchable without buying the course. */
   free?: boolean;
+  /** A short silent clip in /public, played when a member hovers the browse hero. */
+  preview?: string;
 };
 
 export const LECTURES: Lecture[] = [
@@ -27,6 +38,7 @@ export const LECTURES: Lecture[] = [
     seconds: 353,
     thumbnail: "/thumbnails/lecture-01.webp",
     video: "Lectures/lecture-01.mp4",
+    preview: "/previews/lecture-01.mp4",
     free: true,
   },
   {

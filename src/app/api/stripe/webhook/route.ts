@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
-import { recordPurchase } from "@/lib/purchases";
+import { markRefunded, recordPurchase } from "@/lib/purchases";
 import { stripe } from "@/lib/stripe";
 
 /**
@@ -27,6 +27,13 @@ export async function POST(request: NextRequest) {
       // A failure here returns 500, and Stripe retries the event later.
       await recordPurchase(event.data.object);
       break;
+    case "charge.refunded": {
+      // Only a full refund takes the item away; a partial one is a goodwill credit.
+      const charge = event.data.object;
+      const paymentIntent = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      if (charge.refunded && paymentIntent) await markRefunded(paymentIntent);
+      break;
+    }
   }
 
   return NextResponse.json({ received: true });

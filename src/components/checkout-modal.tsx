@@ -6,7 +6,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { startCheckout } from "@/lib/checkout-actions";
+import type { Course } from "@/lib/courses";
 import type { ProductRef } from "@/lib/products";
+import { Poster } from "./poster";
 import { Check } from "./ui";
 
 export type CheckoutItem = {
@@ -19,6 +21,21 @@ export type CheckoutItem = {
   /** Small cover/poster shown in the order summary. */
   visual: ReactNode;
 };
+
+export function courseCheckoutItem(course: Course): CheckoutItem {
+  return {
+    ref: { type: "course", id: course.id },
+    kind: "Course",
+    title: course.title,
+    detail: `${course.level} · ${course.lessons} · ${course.hours}`,
+    price: course.price,
+    visual: (
+      <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
+        <Poster variant={course.poster} label={course.category} />
+      </div>
+    ),
+  };
+}
 
 /*
   Checkout pop-up. The payment form is Stripe's Embedded Checkout, so card

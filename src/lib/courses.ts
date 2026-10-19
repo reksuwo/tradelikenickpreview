@@ -182,11 +182,3 @@ export const POPULAR_IDS = [
   "prop-firm",
   "journal-bootcamp",
 ];
-
-/** Sample progress shown to every member until real enrolments are stored. */
-export const IN_PROGRESS: { course: Course; progress: number; note: string }[] = [
-  { course: byId("complete-system"), progress: 0.34, note: "Lesson 51 of 148" },
-  { course: byId("position-sizing"), progress: 0.72, note: "Lesson 19 of 26" },
-  { course: byId("first-90"), progress: 0.15, note: "Lesson 4 of 22" },
-  { course: byId("live-archive"), progress: 0.5, note: "Session 12" },
-];

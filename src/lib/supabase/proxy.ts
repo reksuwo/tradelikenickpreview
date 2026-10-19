@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Paths that need a signed-in member. */
-const PROTECTED = ["/browse", "/account"];
+const PROTECTED = ["/browse", "/account", "/admin"];
 
 /** Marketing and sign-in pages, and where a signed-in member goes instead. */
 const MEMBER_REDIRECTS: Record<string, string> = {

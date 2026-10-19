@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRef, type ReactNode } from "react";
 import { Poster } from "../poster";
 import { PlayIcon } from "../ui";
@@ -97,13 +98,12 @@ function LockIcon() {
   );
 }
 
-function LectureCard({ lecture, onOpen }: { lecture: Lecture; onOpen: () => void }) {
+function LectureCard({ lecture, href, unlocked }: { lecture: Lecture; href: string; unlocked: boolean }) {
   return (
     <li className="w-[240px] shrink-0 snap-start sm:w-[270px] lg:w-[300px]">
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Lecture ${lecture.n}: ${lecture.title} — more info`}
+      <Link
+        href={href}
+        aria-label={`Play lecture ${lecture.n}: ${lecture.title}`}
         className="group relative block w-full text-left"
       >
         <div className="relative aspect-video overflow-hidden rounded-xl bg-[#141414] ring-1 ring-white/10 transition-all duration-300 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-neon group-focus-visible:ring-2 group-focus-visible:ring-neon">
@@ -115,7 +115,7 @@ function LectureCard({ lecture, onOpen }: { lecture: Lecture; onOpen: () => void
             className="object-cover"
           />
 
-          {lecture.free ? (
+          {unlocked ? null : lecture.free ? (
             <span className="absolute left-2.5 top-2.5 rounded bg-neon px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-ink">
               Free
             </span>
@@ -143,27 +143,35 @@ function LectureCard({ lecture, onOpen }: { lecture: Lecture; onOpen: () => void
         <p className="mt-2.5 truncate text-[14px] font-bold text-white">
           <span className="text-white/50">{lecture.n}.</span> {lecture.title}
         </p>
-      </button>
+      </Link>
     </li>
   );
 }
 
-/** The five recorded lectures of one course, in watch order. */
+/** The five recorded lectures of one course, in watch order. Each card plays its lecture. */
 export function LectureRow({
   id,
   title,
+  courseId,
   lectures,
-  onOpen,
+  unlocked = false,
 }: {
   id?: string;
   title: string;
+  courseId: string;
   lectures: Lecture[];
-  onOpen: () => void;
+  /** The member owns the course, so no Free or lock badges. */
+  unlocked?: boolean;
 }) {
   return (
     <RowFrame id={id} title={title}>
       {lectures.map((l) => (
-        <LectureCard key={l.n} lecture={l} onOpen={onOpen} />
+        <LectureCard
+          key={l.id ?? l.n}
+          lecture={l}
+          href={`/browse/watch/${courseId}?lecture=${l.n}`}
+          unlocked={unlocked}
+        />
       ))}
     </RowFrame>
   );

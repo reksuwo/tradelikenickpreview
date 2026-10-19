@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Arrow, Container, Section, type Tone } from "./ui";
 import { BookCover } from "./book-cover";
 import { CheckoutModal, type CheckoutItem } from "./checkout-modal";
 import { BOOK_CATEGORIES, BOOKS, type Book } from "@/lib/books";
 
-export function BookShelf({ tone }: { tone: Tone }) {
+/** Pass `owned` (book ids from getLibrary) on member pages to mark books already bought. */
+export function BookShelf({ tone, owned = [] }: { tone: Tone; owned?: string[] }) {
   const [active, setActive] = useState("All");
   const [buying, setBuying] = useState<CheckoutItem | null>(null);
   const shown =
@@ -71,21 +73,35 @@ export function BookShelf({ tone }: { tone: Tone }) {
                   {b.format} &middot; {b.pages} pages
                 </p>
                 <div className="mt-auto flex items-center justify-between gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => buy(b)}
-                    aria-label={`Buy ${b.title} for ${b.price}`}
-                    className="font-display text-[18px] font-extrabold tabnum text-fg underline-offset-4 transition-colors hover:text-accent-ink hover:underline"
-                  >
-                    {b.price}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => buy(b)}
-                    className="inline-flex items-center gap-1 rounded-full bg-chip px-3.5 py-2 text-[12.5px] font-semibold text-on-chip transition-opacity hover:opacity-85"
-                  >
-                    Get book <Arrow />
-                  </button>
+                  {owned.includes(b.id) ? (
+                    <>
+                      <p className="font-display text-[18px] font-extrabold text-fg">Owned</p>
+                      <Link
+                        href="/account/books"
+                        className="inline-flex items-center gap-1 rounded-full bg-chip px-3.5 py-2 text-[12.5px] font-semibold text-on-chip transition-opacity hover:opacity-85"
+                      >
+                        Download <Arrow />
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => buy(b)}
+                        aria-label={`Buy ${b.title} for ${b.price}`}
+                        className="font-display text-[18px] font-extrabold tabnum text-fg underline-offset-4 transition-colors hover:text-accent-ink hover:underline"
+                      >
+                        {b.price}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => buy(b)}
+                        className="inline-flex items-center gap-1 rounded-full bg-chip px-3.5 py-2 text-[12.5px] font-semibold text-on-chip transition-opacity hover:opacity-85"
+                      >
+                        Get book <Arrow />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </article>
