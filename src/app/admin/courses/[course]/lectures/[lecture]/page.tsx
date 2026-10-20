@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm, Submit } from "@/components/admin/action-form";
 import { BUTTON, BUTTON_DANGER, Badge, Card, INPUT, LABEL, dateTime } from "@/components/admin/admin-ui";
-import { LectureUploader } from "@/components/admin/lecture-uploader";
+import { ThumbnailUploader } from "@/components/admin/thumbnail-uploader";
 import { requireAdmin } from "@/lib/admin";
 import { deleteLecture, updateLecture } from "@/lib/admin-actions";
 import { getCourse } from "@/lib/course-store";
@@ -16,9 +16,9 @@ type Props = { params: Promise<{ course: string; lecture: string }> };
 
 export const metadata: Metadata = { title: "Edit lecture" };
 
-/** A link to watch the current upload here, or why there isn't one. */
+/** A link to watch the lecture's video here, or why there isn't one. */
 async function preview(key: string | null) {
-  if (!key) return { error: "No video yet." };
+  if (!key) return { error: "No video yet. Add its file path under Details." };
   try {
     if (!(await objectExists(key))) return { error: `The file ${key} isn't in the bucket.` };
     return { src: await signedUrl(key, { expiresIn: 60 * 60 }) };
@@ -51,7 +51,7 @@ export default async function EditLecture({ params }: Props) {
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
         <div className="space-y-6">
-          <Card title="Video" description={lecture.videoKey ? `Stored as ${lecture.videoKey}` : "Upload the lecture video. Large files upload in parts and can take a while."}>
+          <Card title="Video" description={lecture.videoKey ? `Playing ${lecture.videoKey} from the R2 bucket.` : "Videos are put in the R2 bucket directly, then linked here by their path."}>
             <div className="mb-4 aspect-video overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
               {"src" in video ? (
                 <video src={video.src} poster={thumbnailUrl(lecture.thumbnail)} controls preload="metadata" className="size-full" />
@@ -59,10 +59,10 @@ export default async function EditLecture({ params }: Props) {
                 <div className="grid size-full place-items-center p-6 text-center text-[14px] text-white/50">{video.error}</div>
               )}
             </div>
-            <LectureUploader lectureId={lecture.id} kind="video" hasThumbnail={Boolean(lecture.thumbnail)} />
-            <p className="mt-3 text-[12.5px] leading-relaxed text-white/40">
-              Export MP4 with H.264 video and AAC audio, with &ldquo;fast start&rdquo; (web optimized) turned on so it plays
-              before it has fully loaded. Replacing a video keeps members&apos; progress.
+            <p className="text-[12.5px] leading-relaxed text-white/40">
+              To add or replace a video, upload it to the R2 bucket (for example into the Lectures folder), then enter its path
+              under Details and save. Use MP4 with H.264 video, AAC audio and &ldquo;fast start&rdquo; turned on. Replacing a
+              video keeps members&apos; progress.
             </p>
           </Card>
 
@@ -72,10 +72,7 @@ export default async function EditLecture({ params }: Props) {
                 <Image src={thumbnailUrl(lecture.thumbnail)} alt="" fill sizes="220px" className="object-cover" />
               </div>
               <div className="min-w-[240px] flex-1">
-                <LectureUploader lectureId={lecture.id} kind="thumbnail" />
-                {lecture.thumbnail ? null : (
-                  <p className="mt-2 text-[12.5px] text-white/40">Uploading a video makes one from its frames if you skip this.</p>
-                )}
+                <ThumbnailUploader lectureId={lecture.id} />
               </div>
             </div>
           </Card>
@@ -110,7 +107,21 @@ export default async function EditLecture({ params }: Props) {
                   defaultValue={lecture.seconds ? clockTime(lecture.seconds) : ""}
                   className={`${INPUT} max-w-[140px] tabnum`}
                 />
-                <p className="mt-1 text-[12.5px] text-white/40">Filled in from the video when you upload one.</p>
+                <p className="mt-1 text-[12.5px] text-white/40">The video&apos;s running time, as minutes:seconds.</p>
+              </div>
+              <div>
+                <label htmlFor="videoKey" className={LABEL}>
+                  Video file
+                </label>
+                <input
+                  id="videoKey"
+                  name="videoKey"
+                  defaultValue={lecture.videoKey ?? ""}
+                  placeholder="Lectures/lecture-06.mp4"
+                  spellCheck={false}
+                  className={`${INPUT} font-mono text-[13.5px]`}
+                />
+                <p className="mt-1 text-[12.5px] text-white/40">Its path in the R2 bucket. Saving checks the file is there.</p>
               </div>
 
               <fieldset className="space-y-3 rounded-xl border border-white/10 p-4">
@@ -119,7 +130,7 @@ export default async function EditLecture({ params }: Props) {
                   <input type="checkbox" name="published" defaultChecked={lecture.published} className="mt-1 size-4 accent-[#00ff85]" />
                   <span>
                     <span className="font-semibold text-white">Published</span>
-                    <span className="block text-[12.5px] text-white/45">Members can see it. Needs a video.</span>
+                    <span className="block text-[12.5px] text-white/45">Members can see it. Needs a video file.</span>
                   </span>
                 </label>
                 <label className="flex items-start gap-3 text-[14px]">
@@ -147,8 +158,8 @@ export default async function EditLecture({ params }: Props) {
             <p className="mt-4 text-[12.5px] text-white/35">Last changed {dateTime(lecture.updatedAt)}</p>
           </Card>
 
-          <Card title="Delete lecture" description="Removes it, its uploaded files and every member's progress in it. This can't be undone.">
-            <ActionForm action={deleteLecture} confirm={`Delete "${lecture.title}" and its files? This can't be undone.`} className="space-y-2">
+          <Card title="Delete lecture" description="Removes it, its thumbnail and every member's progress in it. The video file stays in the bucket. This can't be undone.">
+            <ActionForm action={deleteLecture} confirm={`Delete "${lecture.title}"? This can't be undone.`} className="space-y-2">
               <input type="hidden" name="id" value={lecture.id} />
               <Submit className={BUTTON_DANGER} pending="Deleting…">
                 Delete lecture

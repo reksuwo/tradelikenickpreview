@@ -39,7 +39,7 @@ export default async function AdminCourses({ searchParams }: Props) {
     <>
       <AdminHeading
         title="Courses"
-        intro="Create courses, set prices, and upload each course's lectures. The order here is the order on the site."
+        intro="Create courses, set prices, and arrange each course's lectures. The order here is the order on the site."
         actions={
           <Link href="/admin/courses/new" className={BUTTON}>
             New course

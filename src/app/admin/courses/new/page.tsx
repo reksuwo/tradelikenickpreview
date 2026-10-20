@@ -19,7 +19,7 @@ export default async function NewCourse() {
         ← Courses
       </Link>
       <div className="mt-3">
-        <AdminHeading title="New course" intro="Fill in the details, then add lectures and upload their videos on the next page." />
+        <AdminHeading title="New course" intro="Fill in the details, then add its lectures on the next page." />
       </div>
       <div className="max-w-3xl">
         <Card>

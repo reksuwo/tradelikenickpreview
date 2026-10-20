@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CourseShelves, type Shelf } from "@/components/browse/course-shelves";
-import { getCourses } from "@/lib/course-store";
-import { POPULAR_IDS, ROWS, categoriesOf, pick } from "@/lib/courses";
+import { getCourses, trendingCourseIds } from "@/lib/course-store";
+import { ROWS, categoriesOf, pick } from "@/lib/courses";
 import { publishedLectures } from "@/lib/lecture-store";
 import { LECTURE_COURSE_ID } from "@/lib/lectures";
 import { requireMember } from "@/lib/member";
@@ -14,9 +14,15 @@ export const metadata: Metadata = {
 
 export default async function BrowsePage() {
   const member = await requireMember("/browse");
-  const [library, courses, lectures] = await Promise.all([getLibrary(), getCourses(), publishedLectures()]);
+  const [library, courses, lectures, trending] = await Promise.all([
+    getLibrary(),
+    getCourses(),
+    publishedLectures(),
+    trendingCourseIds(),
+  ]);
   const toItems = (ids: string[]) => pick(courses, ids).map((course) => ({ course }));
   const mine = courses.filter((c) => library.courses.includes(c.id)).map((course) => ({ course }));
+  const top = toItems(trending);
 
   const categoryRows: Shelf[] = categoriesOf(courses)
     .filter((c) => c !== "All")
@@ -36,7 +42,8 @@ export default async function BrowsePage() {
   const rows: Shelf[] = [
     ...lectureRows,
     { id: "my-courses", title: `My Courses, ${member.firstName}`, items: mine },
-    { title: "Top Courses This Week", items: toItems(POPULAR_IDS), ranked: true },
+    // Ranked by watchers this week; left out until someone has watched something.
+    ...(top.length ? [{ title: "Top Courses This Week", items: top, ranked: true }] : []),
     ...ROWS.map((row) => ({ title: row.title, items: toItems(row.ids) })),
     ...categoryRows,
     { title: "All Courses", items: courses.map((course) => ({ course })) },

@@ -106,7 +106,7 @@ export default async function AdminCourse({ params, searchParams }: Props) {
         >
           <PagedList
             ordered
-            empty={<Empty>No lectures yet. Add the first one below, then upload its video.</Empty>}
+            empty={<Empty>No lectures yet. Add the first one below, then link its video.</Empty>}
             items={lectures.map((l, i) => {
               const f = byLecture[l.id];
               return (

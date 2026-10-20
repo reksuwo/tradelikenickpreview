@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { getLectureRecord } from "@/lib/lecture-store";
 import { announce, notify, type NotificationKind } from "@/lib/notifications";
 import { markRefunded } from "@/lib/purchases";
-import { abortMultipartUpload, completeMultipartUpload, deleteObject, startMultipartUpload } from "@/lib/r2";
+import { abortMultipartUpload, completeMultipartUpload, deleteObject, objectExists, startMultipartUpload } from "@/lib/r2";
 import { stripe } from "@/lib/stripe";
 
 /**
@@ -240,14 +240,27 @@ export async function updateLecture(_prev: ActionState, formData: FormData): Pro
   const free = formData.get("free") === "on";
   const published = formData.get("published") === "on";
   const notifyMembers = formData.get("notify") === "on";
+  const videoKey = field(formData, "videoKey").replace(/^\/+/, "") || null;
 
   if (title.length < 2) return { error: "Give the lecture a title." };
   if (seconds === null) return { error: "Write the length as minutes:seconds, like 12:34." };
-  if (published && !lecture.videoKey) return { error: "Upload a video before publishing." };
+  if (videoKey && (!VIDEO_KEY.test(videoKey) || videoKey.includes(".."))) {
+    return { error: "The video path should look like Lectures/lecture-06.mp4: a folder and file name in the bucket, ending in .mp4, .webm or .mov." };
+  }
+  if (published && !videoKey) return { error: "Add the video's file path before publishing." };
+  // Check a new path actually points at a file, so members never get a broken player.
+  if (videoKey && videoKey !== lecture.videoKey) {
+    try {
+      if (!(await objectExists(videoKey))) return { error: `There's no file at ${videoKey} in the bucket. Check the path, or upload it first.` };
+    } catch (error) {
+      console.error("admin: video check failed", error);
+      return { error: "Couldn't reach R2 to check the video. Try again in a moment." };
+    }
+  }
 
   try {
     await db`
-      update public.lectures set ${db({ title, description, seconds, free, published })}, updated_at = now()
+      update public.lectures set ${db({ title, description, seconds, free, published, video_key: videoKey })}, updated_at = now()
       where id = ${lecture.id}
     `;
     if (published && !lecture.published && notifyMembers) {
@@ -294,9 +307,11 @@ export async function moveLecture(_prev: ActionState, formData: FormData): Promi
   return undefined;
 }
 
-/** Files we uploaded ourselves. The original videos aren't deleted from the panel. */
-function ownedKey(key: string | null, courseId: string) {
-  return Boolean(key && (key.startsWith(`Lectures/${courseId}/`) || key.startsWith("Thumbnails/")));
+/** Videos are managed in the bucket directly; R2 holds only the image files the panel uploaded under Thumbnails/. */
+const VIDEO_KEY = /^[\w-]+(\/[\w.-]+)+\.(mp4|m4v|webm|mov)$/i;
+
+function ownedKey(key: string | null) {
+  return Boolean(key?.startsWith("Thumbnails/"));
 }
 
 export async function deleteLecture(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -310,30 +325,25 @@ export async function deleteLecture(_prev: ActionState, formData: FormData): Pro
   } catch (error) {
     return failed("delete the lecture", error);
   }
-  for (const key of [lecture.videoKey, lecture.thumbnail]) {
-    if (ownedKey(key, lecture.courseId)) await deleteObject(key!).catch((e) => console.error("admin: delete object failed", e));
+  // The video file stays in the bucket; only the thumbnail the panel uploaded goes.
+  if (ownedKey(lecture.thumbnail)) {
+    await deleteObject(lecture.thumbnail!).catch((e) => console.error("admin: delete object failed", e));
   }
   revalidateCourse(lecture.courseId);
   redirect(`/admin/courses/${lecture.courseId}`);
 }
 
-// ─── Uploads ──────────────────────────────────────────────────────────
+// ─── Thumbnail uploads ───────────────────────────────────────────────
 
-const KINDS = {
-  video: { types: { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" }, maxBytes: 20 * 1024 ** 3 },
-  thumbnail: { types: { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" }, maxBytes: 10 * 1024 ** 2 },
-} as const;
+const IMAGE_TYPES: Record<string, string> = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" };
+const MAX_IMAGE_BYTES = 10 * 1024 ** 2;
 
-export type UploadKind = keyof typeof KINDS;
+/** Only thumbnails upload from the panel; videos are put in the bucket by hand. */
+export type UploadKind = "thumbnail";
 
-/** Parts of at least 16 MB, and no more than R2's 10,000. */
-const MIN_PART = 16 * 1024 ** 2;
+export type UploadTicket = { key: string; uploadId: string; partUrls: string[] } | { error: string };
 
-export type UploadTicket =
-  | { key: string; uploadId: string; partSize: number; partUrls: string[] }
-  | { error: string };
-
-/** Opens an upload for a lecture's video or thumbnail. The browser then PUTs each part to its URL. */
+/** Opens an upload for a lecture's thumbnail. The browser then PUTs the image to the URL. */
 export async function startUpload(input: {
   lectureId: string;
   kind: UploadKind;
@@ -341,76 +351,61 @@ export async function startUpload(input: {
   size: number;
 }): Promise<UploadTicket> {
   if (!(await getAdmin())) return DENIED as { error: string };
+  if (input.kind !== "thumbnail") return { error: "Only thumbnails can be uploaded here." };
   const lecture = await getLectureRecord(input.lectureId);
-  const kind = KINDS[input.kind];
-  if (!lecture || !kind) return { error: "That lecture doesn't exist." };
+  if (!lecture) return { error: "That lecture doesn't exist." };
 
-  const ext = (kind.types as Record<string, string>)[input.contentType];
-  if (!ext) {
-    return { error: input.kind === "video" ? "Upload an MP4, WebM or MOV video." : "Upload a WebP, JPEG or PNG image." };
-  }
-  if (!(input.size > 0) || input.size > kind.maxBytes) return { error: "That file is too large." };
+  const ext = IMAGE_TYPES[input.contentType];
+  if (!ext) return { error: "Upload a WebP, JPEG or PNG image." };
+  if (!(input.size > 0) || input.size > MAX_IMAGE_BYTES) return { error: "Images can be up to 10 MB." };
 
-  const name = `${lecture.id}-${randomBytes(4).toString("hex")}.${ext}`;
-  const key = input.kind === "video" ? `Lectures/${lecture.courseId}/${name}` : `Thumbnails/${name}`;
-  const partSize = Math.max(MIN_PART, Math.ceil(input.size / 10_000));
-
+  const key = `Thumbnails/${lecture.id}-${randomBytes(4).toString("hex")}.${ext}`;
   try {
-    const { uploadId, partUrls } = await startMultipartUpload(key, input.contentType, Math.ceil(input.size / partSize));
-    return { key, uploadId, partSize, partUrls };
+    // One part: anything under 5 GB fits, and images are capped at 10 MB.
+    const { uploadId, partUrls } = await startMultipartUpload(key, input.contentType, 1);
+    return { key, uploadId, partUrls };
   } catch (error) {
     console.error("admin: start upload failed", error);
     return { error: "Couldn't start the upload. Check the R2 keys have write access." };
   }
 }
 
-/** Finishes an upload and points the lecture at the new file, replacing the old one. */
+/** Finishes a thumbnail upload and points the lecture at it, replacing the old one. */
 export async function finishUpload(input: {
   lectureId: string;
   kind: UploadKind;
   key: string;
   uploadId: string;
   parts: { partNumber: number; etag: string }[];
-  /** The video's running time, read in the browser. */
-  seconds?: number;
 }): Promise<ActionState> {
   if (!(await getAdmin())) return DENIED;
   const lecture = await getLectureRecord(input.lectureId);
   if (!lecture) return { error: "That lecture doesn't exist." };
 
   // Only accept keys startUpload could have made for this lecture.
-  const prefix = input.kind === "video" ? `Lectures/${lecture.courseId}/${lecture.id}-` : `Thumbnails/${lecture.id}-`;
-  if (!input.key.startsWith(prefix) || input.key.includes("..")) return { error: "That upload doesn't belong to this lecture." };
+  if (!input.key.startsWith(`Thumbnails/${lecture.id}-`) || input.key.includes("..")) {
+    return { error: "That upload doesn't belong to this lecture." };
+  }
 
   try {
     await completeMultipartUpload(input.key, input.uploadId, input.parts);
-    if (input.kind === "video") {
-      const seconds = Math.round(Number(input.seconds) || 0);
-      await db`
-        update public.lectures
-        set video_key = ${input.key}, seconds = ${seconds > 0 ? seconds : lecture.seconds}, updated_at = now()
-        where id = ${lecture.id}
-      `;
-    } else {
-      await db`update public.lectures set thumbnail = ${input.key}, updated_at = now() where id = ${lecture.id}`;
-    }
+    await db`update public.lectures set thumbnail = ${input.key}, updated_at = now() where id = ${lecture.id}`;
   } catch (error) {
     return failed("finish the upload", error);
   }
 
-  const old = input.kind === "video" ? lecture.videoKey : lecture.thumbnail;
-  if (old !== input.key && ownedKey(old, lecture.courseId)) {
-    await deleteObject(old!).catch((e) => console.error("admin: delete old object failed", e));
+  if (lecture.thumbnail !== input.key && ownedKey(lecture.thumbnail)) {
+    await deleteObject(lecture.thumbnail!).catch((e) => console.error("admin: delete old object failed", e));
   }
 
   revalidateCourse(lecture.courseId);
   revalidatePath(`/admin/courses/${lecture.courseId}/lectures/${lecture.id}`);
-  return { message: input.kind === "video" ? "Video uploaded." : "Thumbnail updated." };
+  return { message: "Thumbnail updated." };
 }
 
 export async function cancelUpload(input: { key: string; uploadId: string }) {
   if (!(await getAdmin())) return;
-  if (!/^(Lectures|Thumbnails)\//.test(input.key)) return;
+  if (!input.key.startsWith("Thumbnails/")) return;
   await abortMultipartUpload(input.key, input.uploadId).catch((e) => console.error("admin: abort upload failed", e));
 }
 

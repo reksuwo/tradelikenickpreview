@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { BrowseHeading, CourseShelves } from "@/components/browse/course-shelves";
-import { getCourses } from "@/lib/course-store";
-import { POPULAR_IDS, pick } from "@/lib/courses";
+import { getCourses, trendingCourseIds } from "@/lib/course-store";
+import { pick } from "@/lib/courses";
 import { getLibrary } from "@/lib/purchases";
 
 export const metadata: Metadata = { title: "New & Popular — TradeLikeNick" };
 
 export default async function PopularPage() {
-  const [library, courses] = await Promise.all([getLibrary(), getCourses()]);
+  const [library, courses, trending] = await Promise.all([getLibrary(), getCourses(), trendingCourseIds()]);
+  const top = pick(courses, trending).map((course) => ({ course }));
   const topRated = [...courses].sort((a, b) => Number(b.rating) - Number(a.rating));
   // Placeholder order until courses carry release dates: last in the catalogue counts as newest.
   const recent = [...courses].reverse();
@@ -18,7 +19,7 @@ export default async function PopularPage() {
       <CourseShelves
         owned={library.courses}
         rows={[
-          { title: "Top Courses This Week", items: pick(courses, POPULAR_IDS).map((course) => ({ course })), ranked: true },
+          ...(top.length ? [{ title: "Top Courses This Week", items: top, ranked: true }] : []),
           { title: "Recently Added", items: recent.map((course) => ({ course })) },
           { title: "Highest Rated", items: topRated.map((course) => ({ course })) },
         ]}

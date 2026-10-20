@@ -196,16 +196,3 @@ export function byId(id: string): Course {
   if (!found) throw new Error(`Unknown course: ${id}`);
   return found;
 }
-
-/** "Top Courses This Week", most watched first. */
-export const POPULAR_IDS = [
-  "position-sizing",
-  "complete-system",
-  "live-archive",
-  "price-no-indicators",
-  "first-90",
-  "rules-over-feelings",
-  "backtesting",
-  "prop-firm",
-  "journal-bootcamp",
-];
